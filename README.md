@@ -17,16 +17,16 @@ JAVA 1.8
 4. 프로젝트 루크 경로에 chromedriver 가 존재함. 해당 파일이 경로에 맞게 실행될 수 있도록 지정해야함.
 
 
-pom.xml 
-
+---
+## pom.xml 
 ### 꼭 추가해야 하는 파일 
 ```
 <!-- https://mvnrepository.com/artifact/org.seleniumhq.selenium/selenium-java -->
-		<dependency>
-		    <groupId>org.seleniumhq.selenium</groupId>
-		    <artifactId>selenium-java</artifactId>
-		    <version>3.141.59</version>
-		</dependency>
+<dependency>
+    <groupId>org.seleniumhq.selenium</groupId>
+    <artifactId>selenium-java</artifactId>
+    <version>3.141.59</version>
+</dependency>
 ```
 
 ### 작업시 추가했던 maven version
