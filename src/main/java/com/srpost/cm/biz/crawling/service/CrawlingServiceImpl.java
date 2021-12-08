@@ -28,6 +28,25 @@ public class CrawlingServiceImpl implements CrawlingService{
 	
 	private static int RETRY_CNT = 3;
 	
+	@Override
+	public boolean executeGN05(Site site) throws Exception {
+		// TODO Auto-generated method stub
+		return false;
+	}
+	
+	@Override
+	public boolean executeGN04(Site site) throws Exception {
+		// TODO Auto-generated method stub
+		return false;
+	}
+	
+	
+	@Override
+	public boolean executeGN03(Site site) throws Exception {
+		// TODO Auto-generated method stub
+		return false;
+	}
+	
 	
 	@Override
 	public boolean executeGN02(Site site) throws Exception {
