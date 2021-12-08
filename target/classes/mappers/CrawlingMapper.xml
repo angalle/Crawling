@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.srpost.cm.biz.crawling.mappers.CrawlingMapper">
+
+    <select id="checkDuplicateCrawling" resultType="CrawlingVO">
+        select 
+			title,
+			board_type, 
+			writer, 
+			site, 
+			created_document,
+			created 
+		from crawling.crawling_info ci 
+		where site = #{code}
+		order by created 
+		LIMIT 1 
+    </select>
+    
+    <insert id="insertCrawling">         
+        INSERT INTO crawling_info
+			(
+				site,
+				board_no,
+				board_type,
+				title,
+				writer,
+				created_document,
+				isFile,
+				documents,
+				detail_url,
+				site_url,
+				status,
+				created
+			)
+			VALUES
+			(
+				#{site},
+				#{board_no},
+				#{board_type},
+				#{title},
+				#{writer},
+				#{created_document},
+				#{isFile},
+				#{documents},
+				#{detail_url},
+				#{site_url},
+				#{status},
+				CURRENT_TIMESTAMP
+			);
+         
+    </insert>
+    
+
+</mapper>
+
