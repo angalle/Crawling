@@ -7,7 +7,7 @@ CREATE TABLE crawling.crawling_info (
 	writer varchar(250) NULL,
 	created_document DATETIME NULL,
 	isFile BOOL DEFAULT false NOT NULL,
-	documents BLOB NULL,
+	documents LONGTEXT NULL,
 	detail_url varchar(250) NULL,
 	site_url varchar(250) NULL,
 	status char(1) NULL,
