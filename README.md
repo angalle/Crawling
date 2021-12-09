@@ -7,7 +7,7 @@ JAVA 1.8
 ```
 
 ## 1. create table by db
- - execute sql file in *initDDL Folder*
+ - *initDDL Folder* 안에 sql 파일을 실행한다.
  
 ---
 ### Chcking files 
