@@ -42,15 +42,7 @@ public class HomeController {
 //		if(!service.executeGN02(Site.GN002)) {
 //			return "Fail02";
 //		}
-		
-//		if(!service.executeGN03(Site.GN003)) {
-//			return "Fail03";
-//		}
-		
-		if(!service.executeGN04(Site.GN004)) {
-			return "Fail04";
-		}
-		
+//		
 		return "Success";
 		
 
