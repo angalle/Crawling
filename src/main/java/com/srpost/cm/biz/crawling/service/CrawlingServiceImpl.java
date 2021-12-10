@@ -12,6 +12,7 @@ import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import com.srpost.cm.biz.crawling.Site;
@@ -47,9 +48,15 @@ public class CrawlingServiceImpl implements CrawlingService{
 		return false;
 	}
 	
+//	@Scheduled(cron="* * * * * *")
+//	private void excuteGN02() throws Exception {
+//		this.executeGN02(Site.GN002);
+//	}
+	
 	
 	@Override
 	public boolean executeGN02(Site site) throws Exception {
+		
 		ChromeOptions options = new ChromeOptions();
 		options.addArguments("headless");		
 		WebDriver driver = new ChromeDriver(options);	
@@ -279,5 +286,5 @@ public class CrawlingServiceImpl implements CrawlingService{
         driver.navigate().back();
         waitingResponse(seconds);
     }
-
+    
 }
