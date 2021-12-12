@@ -2,7 +2,6 @@ package com.srpost.cm.biz.crawling.schdule;
 
 import javax.inject.Inject;
 
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import com.srpost.cm.biz.crawling.Site;
