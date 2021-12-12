@@ -26,8 +26,8 @@ public class Schduler {
 		service.executeGN01(Site.GN001);
 		service.executeGN02(Site.GN002);
 		service.executeGN03(Site.GN003);
-		service.executeGN04(Site.GN004);
-		service.executeGN05(Site.GN005);
+//		service.executeGN04(Site.GN004);
+//		service.executeGN05(Site.GN005);
 	}
 	
 	private void setSystemProperties() {

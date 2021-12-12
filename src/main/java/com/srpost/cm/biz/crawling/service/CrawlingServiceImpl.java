@@ -27,7 +27,7 @@ public class CrawlingServiceImpl implements CrawlingService{
 	@Inject
     private CrawlingDAO dao;
 	
-	private static int RETRY_CNT = 3;
+	private static int RETRY_CNT = 5;
 	
 	@Override
 	public boolean executeGN05(Site site) throws Exception {
@@ -296,10 +296,6 @@ public class CrawlingServiceImpl implements CrawlingService{
 		return true;
 	}
 	
-//	@Scheduled(cron="* * * * * *")
-//	private void excuteGN02() throws Exception {
-//		this.executeGN02(Site.GN002);
-//	}
 	
 	
 	@Override
@@ -353,7 +349,7 @@ public class CrawlingServiceImpl implements CrawlingService{
                 
                 JavascriptExecutor executor = (JavascriptExecutor) driver;
                 String click_script = click_target.getAttribute("onclick");
-                System.out.println(click_script);
+//                System.out.println(click_script);
                 executor.executeScript(click_script);
                 waitingResponse(2000);
                 
@@ -440,7 +436,7 @@ public class CrawlingServiceImpl implements CrawlingService{
             try{
             	String current_url = url + "&page="+ page_index;
             	vo.setSite_url(current_url);
-                pageMove(driver, current_url, 2000);
+                pageMove(driver, current_url, 2500);
 
                 List<WebElement> a_links = driver.findElements(By.cssSelector("#list_body > tr > td > a"));
                 if (a_links.size() == 0 ) {
@@ -472,11 +468,11 @@ public class CrawlingServiceImpl implements CrawlingService{
                 String title = a.getText();
                 vo.setTitle(title);
                 a.click();
-                waitingResponse(2000);
+                waitingResponse(2500);
 
                 String detail_path = driver.getCurrentUrl();
                 vo.setDetail_url(detail_path);
-                pageMove(driver, detail_path, 2000);
+//                pageMove(driver, detail_path, 2000);
 
                 WebElement p_article = driver.findElement(By.cssSelector("div.brd_viewer > div.vw_article"));
                 vo.setDocuments(p_article.getAttribute("innerHTML"));

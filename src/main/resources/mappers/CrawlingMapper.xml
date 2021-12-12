@@ -15,6 +15,7 @@
 			created 
 		from crawling.crawling_info ci 
 		where site = #{code}
+		and status = 'S'
 		order by created 
 		LIMIT 1 
     </select>
