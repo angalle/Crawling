@@ -59,3 +59,18 @@ JAVA 1.8
     <version>${org.springframework-version}</version>
 </dependency>
 ```
+
+---
+
+## GET / POST 방식 구분 
+```
+	GN001("GN01", "https://ccei.creativekorea.or.kr/gyeongnam/allim/allim_list.do?div_code=1"), *GET*
+	GN002("GN02", "https://www.gntp.or.kr/biz/infoList"),                                       *POST*
+	GN003("GN03", "https://www.mss.go.kr/site/gyeongnam/ex/bbs/List.do?cbIdx=292"),             *GET*
+	GN004("GN04", "https://www.gnsinbo.or.kr/bbs/board.php?bo_table=1_2_3"),                    *GET*
+	GN005("GN05", "https://www2.ripc.org/regional/notice/changwon/bizNoticeList.do");           *POST*
+ ```
+ 
+ 
+ DB snake case 적용 -
+ java camel case 적용 -
