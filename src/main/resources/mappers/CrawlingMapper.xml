@@ -5,50 +5,65 @@
 
 <mapper namespace="com.srpost.cm.biz.crawling.mappers.CrawlingMapper">
 
-    <select id="checkDuplicateCrawling" resultType="CrawlingVO">
-        select 
-			title,
-			board_type, 
+	<resultMap type="com.srpost.cm.biz.crawling.vo.CrawlingVO" id="mappingCrawlingVo">
+        <result property="docSeq" column="doc_seq"/>
+        <result property="docType" column="doc_type"/>
+        <result property="title" column="title"/>
+        <result property="writer" column="writer"/>
+        <result property="siteType" column="site_type"/>
+        <result property="docRegDt" column="doc_reg_dt"/>
+        <result property="regDt" column="reg_dt"/>
+    </resultMap>
+
+ 	<select id="checkDuplicateCrawling" resultMap="mappingCrawlingVo" resultType="CrawlingVO">
+        select
+        	doc_seq,
+        	doc_type, 
+			title,			 
 			writer, 
-			site, 
-			created_document,
-			created 
-		from crawling.crawling_info ci 
-		where site = #{code}
-		and status = 'S'
-		order by created 
+			site_type, 
+			doc_reg_dt,
+			reg_dt 
+		from si_crawling ci 
+		where site_type = #{siteType}
+		and success_yn = 'Y'
+		order by reg_dt 
 		LIMIT 1 
     </select>
+
+	
+
+   
     
     <insert id="insertCrawling">         
-        INSERT INTO crawling_info
+        INSERT INTO si_crawling
 			(
-				site,
-				board_no,
-				board_type,
+				site_type,
+				doc_seq,
+				doc_type,
 				title,
 				writer,
-				created_document,
-				isFile,
-				documents,
+				doc_reg_dt,
+				file_yn,
+				contents,
 				detail_url,
 				site_url,
-				status,
-				created
+				success_yn,
+				reg_dt
 			)
 			VALUES
 			(
-				#{site},
-				#{board_no},
-				#{board_type},
+				#{siteType},
+				#{docSeq},
+				#{docType},
 				#{title},
 				#{writer},
-				#{created_document},
-				#{isFile},
-				#{documents},
-				#{detail_url},
-				#{site_url},
-				#{status},
+				#{docRegDt},
+				#{fileYn},
+				#{contents},
+				#{detailUrl},
+				#{siteUrl},
+				#{successYn},
 				CURRENT_TIMESTAMP
 			);
          

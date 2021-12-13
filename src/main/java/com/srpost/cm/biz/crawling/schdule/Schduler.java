@@ -4,7 +4,6 @@ import javax.inject.Inject;
 
 import org.springframework.stereotype.Component;
 
-import com.srpost.cm.biz.crawling.Site;
 import com.srpost.cm.biz.crawling.service.CrawlingService;
 
 /**
@@ -18,13 +17,17 @@ public class Schduler {
 	
 	public static final String WEB_DRIVER_ID = "webdriver.chrome.driver"; // 드라이버 ID
 	public static final String WEB_DRIVER_PATH = "/Users/test/Documents/eclipse-workspace/Crawling/chromedriver"; // 드라이버 경로
-
-//	@Scheduled(cron="0 0/1 * * * *")
+	
+	/**
+	 * Not Active Scheduler Status, 
+	 * If you want to active scheduler, go to file root-context.xml 
+	 * @throws Exception
+	 */
 	public void excuteGNJobs() throws Exception {
 		setSystemProperties();
-		service.executeGN01(Site.GN001);
-		service.executeGN02(Site.GN002);
-		service.executeGN03(Site.GN003);
+//		service.executeGN01(Site.GN001);
+//		service.executeGN02(Site.GN002);
+//		service.executeGN03(Site.GN003);
 //		service.executeGN04(Site.GN004);
 //		service.executeGN05(Site.GN005);
 	}

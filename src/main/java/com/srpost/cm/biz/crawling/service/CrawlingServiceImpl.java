@@ -25,7 +25,7 @@ public class CrawlingServiceImpl implements CrawlingService{
 	
 	@Inject
     private CrawlingDAO dao;
-	
+	//재시도 횟수 
 	private static int RETRY_CNT = 5;
 	
 	@Override
@@ -34,122 +34,118 @@ public class CrawlingServiceImpl implements CrawlingService{
 		options.addArguments("headless");		
 		WebDriver driver = new ChromeDriver(options);	
 		
-		CrawlingVO check_duplicate_vo = dao.checkDuplicateCrawling(site.getCode());
-		
+		CrawlingVO checkDuplicateVo = dao.checkDuplicateCrawling(site.getCode());
 		String url = site.getValue();
 		// 몇번째 row 인지 
-        int cursor_index = 0;
+        int cursorIndex = 0;
         // 현재 페이지
-        int page_index = 1;
+        int pageIndex = 1;
         // 실패시 재시도 횟수 
-        int retry_cnt = 0;
+        int retryCnt = 0;
         
         String current_url = url;
         pageMove(driver, current_url, 2000);
         while(true){	
             CrawlingVO vo = new CrawlingVO();
-            vo.setSite(site.getCode());
+            vo.setSiteType(site.getCode());
             try{
-            	vo.setSite_url(current_url);                
+            	vo.setSiteUrl(current_url);   
 
-                List<WebElement> a_links = driver.findElements(By.cssSelector("table > tbody > tr"));
-                if (a_links.size() == 0 ) {
+                List<WebElement> aLinks = driver.findElements(By.cssSelector("table > tbody > tr"));
+                if (aLinks.size() == 0 ) {
                 	throw new Exception("Fail to Call Document");
                 }
                 
-                logger.info(site.getCode()+"/CURRENT CURSOR/"+cursor_index+"/MAX CURSOR/"+a_links.size()+"/PAGE INDEX/"+page_index);
+                logger.info(site.getCode()+"/CURRENT CURSOR/"+cursorIndex+"/MAX CURSOR/"+aLinks.size()+"/PAGE INDEX/"+pageIndex);
                 
-                if(a_links.size() <= cursor_index){
-                	page_index++;
-                	cursor_index = 0;
+                if(aLinks.size() <= cursorIndex){
+                	pageIndex++;
+                	cursorIndex = 0;
                 	
                 	JavascriptExecutor executor = (JavascriptExecutor) driver;
                 	
                 	// 이 사이트는 목록으로 가는 방법이 목록버튼 눌러서 이동하는 방법이 대기시간이 적어 이 방법으로 진행한다 . 
-                	executor.executeScript("goPaging("+page_index+")");
+                	executor.executeScript("goPaging("+pageIndex+")");
                 	waitingResponse(2000);
                     continue;
                 }
                 
                 
-                List<WebElement> tds = driver.findElements(By.cssSelector("table > tbody > tr:nth-child("+(cursor_index+1)+") > td"));
-                String board_no = tds.get(0).getText();
-                vo.setBoard_no(Integer.parseInt(board_no));
-                WebElement click_target = tds.get(1).findElement(By.cssSelector("a"));
-                String title = click_target.getText();
+                List<WebElement> tds = driver.findElements(By.cssSelector("table > tbody > tr:nth-child("+(cursorIndex+1)+") > td"));
+                String docSeq = tds.get(0).getText();
+                vo.setDocSeq(Integer.parseInt(docSeq));
+                WebElement clickTarget = tds.get(1).findElement(By.cssSelector("a"));
+                String title = clickTarget.getText();
                 vo.setTitle(title);
                 
-                String created_document = tds.get(2).getText();
-                vo.setCreated_document(created_document);
+                String docRegDt = tds.get(2).getText().replace(".", "-");
+                vo.setDocRegDt(docRegDt);
                 
                 List<WebElement> isFile = tds.get(3).findElements(By.cssSelector("img"));
-                vo.setIsFile(false);
+                vo.setFileYn(false);
                 if(isFile.size() != 0 ) {
-                	vo.setIsFile(true);
+                	vo.setFileYn(true);
                 }
                 
-                click_target.click();
+                clickTarget.click();
                 waitingResponse(2000);
 
-                String detail_path = driver.getCurrentUrl();
-                vo.setDetail_url(detail_path);
+                String detailUrl = driver.getCurrentUrl();
+                vo.setDetailUrl(detailUrl);
                 
                 
-                WebElement p_article = driver.findElement(By.cssSelector("textarea"));
-                vo.setDocuments(p_article.getAttribute("innerHTML"));
+                WebElement pArticle = driver.findElement(By.cssSelector("textarea"));
+                vo.setContents(pArticle.getAttribute("innerHTML"));
                 
-            	
-                if(check_duplicate_vo != null) {
-                	System.out.println(check_duplicate_vo.getTitle());
-                	System.out.println(vo.getTitle());
+                if(checkDuplicateVo != null) {
             		if(
-        				check_duplicate_vo.getTitle().equals(vo.getTitle())  
-        				&& check_duplicate_vo.getBoard_no() == vo.getBoard_no()
-        				&& check_duplicate_vo.getCreated_document().substring(0,10).equals(vo.getCreated_document())
+            				checkDuplicateVo.getTitle().equals(vo.getTitle())  
+        				&& checkDuplicateVo.getDocSeq() == vo.getDocSeq()
+        				&& checkDuplicateVo.getDocRegDt().substring(0, 10).equals(vo.getDocRegDt())
     				) {
                 		// 기존에 등록된 곳 까지 insert 시
                 		logger.info(site.getCode()+"/ALREADY REGISTER DOCUMENT");
-                		logger.info("TITLE::"+check_duplicate_vo.getTitle()+"/WRITER::"+check_duplicate_vo.getWriter()+"/CRETED_DOCUMENT:"+check_duplicate_vo.getCreated_document());
+                		logger.info("TITLE::"+checkDuplicateVo.getTitle()+"/WRITER::"+checkDuplicateVo.getWriter()+"/CRETED_DOCUMENT:"+checkDuplicateVo.getDocRegDt());
                 		break;
                 	}
             	}
             	
             	
-            	vo.setStatus("S");
+            	vo.setSuccessYn("Y");
             	dao.insertCrawling(vo);
             	
-            	if("1".equals(board_no) ) {
+            	if("1".equals(docSeq) ) {
             		// 끝까지 insert 시도 
             		logger.info(site.getCode()+"/END DOCUMENT");
             		break;
             	}
             	
             	// 이 사이트는 목록으로 가는 방법이 목록버튼 눌러서 이동하는 방법이 대기시간이 적어 이 방법으로 진행한다 .
-            	WebElement back_list_page = driver.findElement(By.cssSelector("div.contain-div > dl > dd.mar_top_15.txt_alignR > a"));
-            	back_list_page.click();
+            	WebElement backListPage = driver.findElement(By.cssSelector("div.contain-div > dl > dd.mar_top_15.txt_alignR > a"));
+            	backListPage.click();
             	waitingResponse(2000);
             	
-            	retry_cnt = 0;
-            	cursor_index++;
+            	retryCnt = 0;
+            	cursorIndex++;
             }catch(Exception e){
             	// retry 경남은  #### Cusor 3번 게시글이 에러가 남.
             	e.printStackTrace();
-            	if(retry_cnt < RETRY_CNT) {
-            		logger.warn(site.getCode()+"/CURRENT CURSOR/"+cursor_index+"/PAGE INDEX/"+page_index+"/RETRY CNT/"+retry_cnt);
-            		retry_cnt++;
+            	if(retryCnt < RETRY_CNT) {
+            		logger.warn(site.getCode()+"/CURRENT CURSOR/"+cursorIndex+"/PAGE INDEX/"+pageIndex+"/RETRY CNT/"+retryCnt);
+            		retryCnt++;
             		continue;
-            	}else if(retry_cnt == RETRY_CNT) {
-            		vo.setIsFile(false);
-                	vo.setStatus("F");
+            	}else if(retryCnt == RETRY_CNT) {
+            		vo.setFileYn(false);
+                	vo.setSuccessYn("N");
                 	dao.insertCrawling(vo);
-                	retry_cnt++;
+                	retryCnt++;
                 	// 오류가 났을 시 다음 커서로 이동                
-                    cursor_index++;
+                    cursorIndex++;
                    continue;
             	}else {
             		//커서가 이동한뒤에도 반복적 오류가 발생하면 중단
             		logger.error("ABOVE THIS LINE, ERROR OCCURING AND PLEASE READ LOGS");
-            		logger.error(site.getCode()+"/CURRENT CURSOR/"+cursor_index+"/PAGE INDEX/"+page_index+"/RETRY CNT/"+retry_cnt);
+            		logger.error(site.getCode()+"/CURRENT CURSOR/"+cursorIndex+"/PAGE INDEX/"+pageIndex+"/RETRY CNT/"+retryCnt);
             		logger.error(site.getCode()+"/SITE URL/"+site.getValue());
             		logger.error("ABOVE THIS LINE, ERROR OCCURING AND PLEASE READ LOGS");
             		break;
@@ -168,111 +164,111 @@ public class CrawlingServiceImpl implements CrawlingService{
 		options.addArguments("headless");		
 		WebDriver driver = new ChromeDriver(options);	
 		
-		CrawlingVO check_duplicate_vo = dao.checkDuplicateCrawling(site.getCode());
+		CrawlingVO checkDuplicateVo = dao.checkDuplicateCrawling(site.getCode());
 		
 		String url = site.getValue();
 		// 몇번째 row 인지 
-        int cursor_index = 0;
+        int cursorIndex = 0;
         // 현재 페이지
-        int page_index = 1;
+        int pageIndex = 1;
         // 실패시 재시도 횟수 
-        int retry_cnt = 0;
+        int retryCnt = 0;
         
         while(true){	
             CrawlingVO vo = new CrawlingVO();
-            vo.setSite(site.getCode());
+            vo.setSiteType(site.getCode());
             try{
             	String current_url = url;
-            	vo.setSite_url(current_url);
+            	vo.setSiteUrl(current_url);
                 pageMove(driver, current_url, 2000);
 
-                List<WebElement> a_links = driver.findElements(By.cssSelector("table > tbody > tr"));
-                if (a_links.size() == 0 ) {
+                List<WebElement> aLinks = driver.findElements(By.cssSelector("table > tbody > tr"));
+                if (aLinks.size() == 0 ) {
                 	throw new Exception("Fail to Call Document");
                 }
                 
-                logger.info(site.getCode()+"/CURRENT CURSOR/"+cursor_index+"/MAX CURSOR/"+a_links.size()+"/PAGE INDEX/"+page_index);
+                logger.info(site.getCode()+"/CURRENT CURSOR/"+cursorIndex+"/MAX CURSOR/"+aLinks.size()+"/PAGE INDEX/"+pageIndex);
                 
-                if(a_links.size() <= cursor_index){
-                	page_index++;
-                	cursor_index = 0; 
+                if(aLinks.size() <= cursorIndex){
+                	pageIndex++;
+                	cursorIndex = 0; 
                     continue;
                 }
                 
                 
-                List<WebElement> tds = driver.findElements(By.cssSelector("table > tbody > tr:nth-child("+(cursor_index+1)+") > td"));
-                String board_no = tds.get(0).getText();
-                vo.setBoard_no(Integer.parseInt(board_no));
-                WebElement click_target = tds.get(1).findElement(By.cssSelector("a"));
-                String title = click_target.getText();
+                List<WebElement> tds = driver.findElements(By.cssSelector("table > tbody > tr:nth-child("+(cursorIndex+1)+") > td"));
+                String docSeq = tds.get(0).getText();
+                vo.setDocSeq(Integer.parseInt(docSeq));
+                WebElement clickTarget = tds.get(1).findElement(By.cssSelector("a"));
+                String title = clickTarget.getText();
                 vo.setTitle(title);
                 String writer = tds.get(2).getText();
                 vo.setWriter(writer);
                 
-                String created_document = tds.get(4).getText();
-                vo.setCreated_document(created_document);
+                String docRegDt = tds.get(4).getText();
+                vo.setDocRegDt(docRegDt);
                 
-                click_target.click();
+                clickTarget.click();
                 waitingResponse(2000);
 
-                String detail_path = driver.getCurrentUrl();
-                vo.setDetail_url(detail_path);
+                String detailPath = driver.getCurrentUrl();
+                vo.setDetailUrl(detailPath);
                 
                 
-                WebElement p_article = driver.findElement(By.cssSelector("#bo_v_atc"));
-                vo.setDocuments(p_article.getAttribute("innerHTML"));
+                WebElement pArticle = driver.findElement(By.cssSelector("#bo_v_atc"));
+                vo.setContents(pArticle.getAttribute("innerHTML"));
                 
                 List<WebElement> files = driver.findElements(By.cssSelector("#bo_v_file"));
-                vo.setIsFile(false);
+                vo.setFileYn(false);
                 if(files.size() != 0) {
-                	vo.setIsFile(true);
+                	vo.setFileYn(true);
                 }
                 
             	
-                if(check_duplicate_vo != null) {
+                if(checkDuplicateVo != null) {
             		if(
-        				check_duplicate_vo.getTitle().equals(vo.getTitle())  
-        				&& check_duplicate_vo.getWriter().equals(vo.getWriter())
-        				&& check_duplicate_vo.getCreated_document().substring(0,10).equals(vo.getCreated_document())
+        				checkDuplicateVo.getTitle().equals(vo.getTitle())  
+        				&& checkDuplicateVo.getWriter().equals(vo.getWriter())
+        				&& checkDuplicateVo.getDocRegDt().substring(0,10).equals(vo.getDocRegDt())
     				) {
                 		// 기존에 등록된 곳 까지 insert 시
                 		logger.info(site.getCode()+"/ALREADY REGISTER DOCUMENT");
-                		logger.info("TITLE::"+check_duplicate_vo.getTitle()+"/WRITER::"+check_duplicate_vo.getWriter()+"/CRETED_DOCUMENT:"+check_duplicate_vo.getCreated_document());
+                		logger.info("TITLE::"+checkDuplicateVo.getTitle()+"/WRITER::"+checkDuplicateVo.getWriter()+"/CRETED_DOCUMENT:"+checkDuplicateVo.getDocRegDt());
                 		break;
                 	}
             	}
             	
             	
-            	vo.setStatus("S");
+            	vo.setSuccessYn("Y");
             	dao.insertCrawling(vo);
             	
-            	if("1".equals(board_no) ) {
+            	if("1".equals(docSeq) ) {
             		// 끝까지 insert 시도 
             		logger.info(site.getCode()+"/END DOCUMENT");
             		break;
             	}
             	
-            	retry_cnt = 0;
-            	cursor_index++;
+            	retryCnt = 0;
+            	cursorIndex++;
             }catch(Exception e){
             	// retry 경남은  #### Cusor 3번 게시글이 에러가 남.
             	e.printStackTrace();
-            	if(retry_cnt < RETRY_CNT) {
-            		logger.warn(site.getCode()+"/CURRENT CURSOR/"+cursor_index+"/PAGE INDEX/"+page_index+"/RETRY CNT/"+retry_cnt);
-            		retry_cnt++;
+            	if(retryCnt < RETRY_CNT) {
+            		logger.warn(site.getCode()+"/CURRENT CURSOR/"+cursorIndex+"/PAGE INDEX/"+pageIndex+"/RETRY CNT/"+retryCnt);
+            		retryCnt++;
             		continue;
-            	}else if(retry_cnt == RETRY_CNT) {
-            		vo.setIsFile(false);
-                	vo.setStatus("F");
+            	}else if(retryCnt == RETRY_CNT) {
+            		vo.setFileYn(false);
+                	vo.setSuccessYn("N");
                 	dao.insertCrawling(vo);
-                	retry_cnt++;
+                	retryCnt++;
                 	// 오류가 났을 시 다음 커서로 이동                
-                    cursor_index++;
+                    cursorIndex++;
                    continue;
             	}else {
             		//커서가 이동한뒤에도 반복적 오류가 발생하면 중단
             		logger.error("ABOVE THIS LINE, ERROR OCCURING AND PLEASE READ LOGS");
-            		logger.error(site.getCode()+"/CURRENT CURSOR/"+cursor_index+"/PAGE INDEX/"+page_index+"/RETRY CNT/"+retry_cnt);
+            		logger.error(site.getCode()+"/CURRENT CURSOR/"+cursorIndex+"/PAGE INDEX/"+pageIndex+"/RETRY CNT/"+retryCnt);
             		logger.error(site.getCode()+"/SITE URL/"+site.getValue());
             		logger.error("ABOVE THIS LINE, ERROR OCCURING AND PLEASE READ LOGS");
             		break;
@@ -292,36 +288,36 @@ public class CrawlingServiceImpl implements CrawlingService{
 		options.addArguments("headless");		
 		WebDriver driver = new ChromeDriver(options);	
 		
-		CrawlingVO check_duplicate_vo = dao.checkDuplicateCrawling(site.getCode());
+		CrawlingVO checkDuplicateVo = dao.checkDuplicateCrawling(site.getCode());
 		
 		String url = site.getValue();
 		// 몇번째 row 인지 
-        int cursor_index = 0;
+        int cursorIndex = 0;
         // 현재 페이지
-        int page_index = 1;
+        int pageIndex = 1;
         // 실패시 재시도 횟수 
-        int retry_cnt = 0;
+        int retryCnt = 0;
         
         pageMove(driver, url, 3000);
         while(true){	
             CrawlingVO vo = new CrawlingVO();
-            vo.setSite(site.getCode());
+            vo.setSiteType(site.getCode());
             
             try{       	
-                vo.setSite_url(url);
+                vo.setSiteUrl(url);
                 
-                List<WebElement> a_links = driver.findElements(By.cssSelector("table > tbody > tr"));
-                if (a_links.size() == 0 ) {
+                List<WebElement> aLinks = driver.findElements(By.cssSelector("table > tbody > tr"));
+                if (aLinks.size() == 0 ) {
                 	throw new Exception("Fail to Call Document");
                 }
                 
-                logger.info(site.getCode()+"/CURRENT CURSOR/"+cursor_index+"/MAX CURSOR/"+a_links.size()+"/PAGE INDEX/"+page_index);
+                logger.info(site.getCode()+"/CURRENT CURSOR/"+cursorIndex+"/MAX CURSOR/"+aLinks.size()+"/PAGE INDEX/"+pageIndex);
                 
-                if(a_links.size() <= cursor_index){
-                	page_index++;
-                	cursor_index = 0;
+                if(aLinks.size() <= cursorIndex){
+                	pageIndex++;
+                	cursorIndex = 0;
                 	JavascriptExecutor executor = (JavascriptExecutor) driver;
-                	String javascript_function = "doBbsFPag("+page_index+");";
+                	String javascript_function = "doBbsFPag("+pageIndex+");";
                     executor.executeScript(javascript_function);
                     waitingResponse(2000);
                     
@@ -329,88 +325,88 @@ public class CrawlingServiceImpl implements CrawlingService{
                     continue;
                 }
                 
-                List<WebElement> tds = driver.findElements(By.cssSelector("table > tbody > tr:nth-child("+(cursor_index+1)+") > td"));
-                String board_no = tds.get(0).getText();
-                vo.setBoard_no(Integer.parseInt(board_no));
-                WebElement click_target = tds.get(1).findElement(By.cssSelector("a"));
-                String title = click_target.getText();
+                List<WebElement> tds = driver.findElements(By.cssSelector("table > tbody > tr:nth-child("+(cursorIndex+1)+") > td"));
+                String docSeq = tds.get(0).getText();
+                vo.setDocSeq(Integer.parseInt(docSeq));
+                WebElement clickTarget = tds.get(1).findElement(By.cssSelector("a"));
+                String title = clickTarget.getText();
                 vo.setTitle(title);
                 String writer = tds.get(2).getText();
                 vo.setWriter(writer);
                 List<WebElement> isFileElements = tds.get(3).findElements(By.cssSelector("a"));
-                vo.setIsFile(false);
+                vo.setFileYn(false);
                 if(isFileElements.size() != 0) {
-                	vo.setIsFile(true);
+                	vo.setFileYn(true);
                 }
                 
-                String created_document = tds.get(4).getText();
-                vo.setCreated_document(created_document);
+                String docRegDt = tds.get(4).getText();
+                vo.setDocRegDt(docRegDt);
                 
                 
                 JavascriptExecutor executor = (JavascriptExecutor) driver;
-                String click_script = click_target.getAttribute("onclick");
-                click_script = click_script.replace("return false;", "");                
-                executor.executeScript(click_script);
+                String clickScript = clickTarget.getAttribute("onclick");
+                clickScript = clickScript.replace("return false;", "");                
+                executor.executeScript(clickScript);
                 waitingResponse(2000);
-                String detail_path = driver.getCurrentUrl();
-                vo.setDetail_url(detail_path);
+                String detailPath = driver.getCurrentUrl();
+                vo.setDetailUrl(detailPath);
                 
                 
-                WebElement p_article = driver.findElement(By.cssSelector("#editContents"));
-                vo.setDocuments(p_article.getAttribute("innerHTML"));
+                WebElement pArticle = driver.findElement(By.cssSelector("#editContents"));
+                vo.setContents(pArticle.getAttribute("innerHTML"));
             	
             	
-                if(check_duplicate_vo != null) {
+                if(checkDuplicateVo != null) {
             		if(
-        				check_duplicate_vo.getTitle().equals(vo.getTitle())  
-        				&& check_duplicate_vo.getWriter().equals(vo.getWriter())
-        				&& check_duplicate_vo.getCreated_document().substring(0,10).equals(vo.getCreated_document())
+        				checkDuplicateVo.getTitle().equals(vo.getTitle())  
+        				&& checkDuplicateVo.getWriter().equals(vo.getWriter())
+        				&& checkDuplicateVo.getDocRegDt().substring(0,10).equals(vo.getDocRegDt())
     				) {
                 		// 기존에 등록된 곳 까지 insert 시
             			logger.info(site.getCode()+"/ALREADY REGISTER DOCUMENT ");
-            			logger.info("TITLE::"+check_duplicate_vo.getTitle()+"/WRITER::"+check_duplicate_vo.getWriter()+"/CRETED_DOCUMENT:"+check_duplicate_vo.getCreated_document());
+            			logger.info("TITLE::"+checkDuplicateVo.getTitle()+"/WRITER::"+checkDuplicateVo.getWriter()+"/CRETED_DOCUMENT:"+checkDuplicateVo.getDocRegDt());
                 		break;
                 	}
             	}
             	
             	
-            	vo.setStatus("S");
+            	vo.setSuccessYn("Y");
             	dao.insertCrawling(vo);
             	
-            	if("1".equals(board_no) ) {
+            	if("1".equals(docSeq) ) {
             		// 끝까지 insert 시도 
             		logger.info(site.getCode()+"/END DOCUMENT");
             		break;
             	}
             	
             	// 이 사이트는 목록으로 가는 방법이 목록버튼 눌러서 이동하는 방법이 대기시간이 적어 이 방법으로 진행한다 . 
-            	WebElement back_list_page = driver.findElement(By.cssSelector("div.btn_box > a.go_list"));
-            	String back_list_page_script = back_list_page.getAttribute("onclick");
-            	executor.executeScript(back_list_page_script);
+            	WebElement backListPage = driver.findElement(By.cssSelector("div.btn_box > a.go_list"));
+            	String backListPageScript = backListPage.getAttribute("onclick");
+            	executor.executeScript(backListPageScript);
             	waitingResponse(2000);
             	
-            	retry_cnt = 0;
-            	cursor_index++;
+            	retryCnt = 0;
+            	cursorIndex++;
             }catch(Exception e){
             	// retry 경남은  #### Cusor 3번 게시글이 에러가 남.
             	System.out.println(e.getMessage());
             	e.printStackTrace();
-            	if(retry_cnt < RETRY_CNT) {
-            		logger.warn(site.getCode()+"/CURRENT CURSOR/"+cursor_index+"/PAGE INDEX/"+page_index+"/RETRY CNT/"+retry_cnt);
-            		retry_cnt++;
+            	if(retryCnt < RETRY_CNT) {
+            		logger.warn(site.getCode()+"/CURRENT CURSOR/"+cursorIndex+"/PAGE INDEX/"+pageIndex+"/RETRY CNT/"+retryCnt);
+            		retryCnt++;
             		continue;
-            	}else if(retry_cnt == RETRY_CNT) {
-            		vo.setIsFile(false);
-                	vo.setStatus("F");
+            	}else if(retryCnt == RETRY_CNT) {
+            		vo.setFileYn(false);
+                	vo.setSuccessYn("N");
                 	dao.insertCrawling(vo);
-                	retry_cnt++;
+                	retryCnt++;
                 	// 오류가 났을 시 다음 커서로 이동                
-                    cursor_index++;
+                    cursorIndex++;
                     continue;
             	}else {
             		//커서가 이동한뒤에도 반복적 오류가 발생하면 중단
             		logger.error("ABOVE THIS LINE, ERROR OCCURING AND PLEASE READ LOGS");
-            		logger.error(site.getCode()+"/CURRENT CURSOR/"+cursor_index+"/PAGE INDEX/"+page_index+"/RETRY CNT/"+retry_cnt);
+            		logger.error(site.getCode()+"/CURRENT CURSOR/"+cursorIndex+"/PAGE INDEX/"+pageIndex+"/RETRY CNT/"+retryCnt);
             		logger.error(site.getCode()+"/SITE URL/"+site.getValue());
             		logger.error("ABOVE THIS LINE, ERROR OCCURING AND PLEASE READ LOGS");
             		break;
@@ -433,100 +429,97 @@ public class CrawlingServiceImpl implements CrawlingService{
 		options.addArguments("headless");		
 		WebDriver driver = new ChromeDriver(options);	
 		
-		CrawlingVO check_duplicate_vo = dao.checkDuplicateCrawling(site.getCode());
+		CrawlingVO checkDuplicateVo = dao.checkDuplicateCrawling(site.getCode());
 		
 		String url = site.getValue();
 		// 몇번째 row 인지 
-        int cursor_index = 0;
+        int cursorIndex = 0;
         // 현재 페이지
-        int page_index = 1;
+        int pageIndex = 1;
         // 실패시 재시도 횟수 
-        int retry_cnt = 0;
+        int retryCnt = 0;
         
         while(true){	
             CrawlingVO vo = new CrawlingVO();
-            vo.setSite(site.getCode());
+            vo.setSiteType(site.getCode());
             try{
             	String current_url = url;
-            	vo.setSite_url(current_url);
+            	vo.setSiteUrl(current_url);
                 pageMove(driver, current_url, 2000);
 
-                List<WebElement> a_links = driver.findElements(By.cssSelector(".de-news > table > tbody > tr.table-contents"));
-                if (a_links.size() == 0 ) {
+                List<WebElement> aLinks = driver.findElements(By.cssSelector(".de-news > table > tbody > tr.table-contents"));
+                if (aLinks.size() == 0 ) {
                 	throw new Exception("Fail to Call Document");
                 }
                 
-                logger.info(site.getCode()+"/CURRENT CURSOR/"+cursor_index+"/MAX CURSOR/"+a_links.size()+"/PAGE INDEX/"+page_index);
+                logger.info(site.getCode()+"/CURRENT CURSOR/"+cursorIndex+"/MAX CURSOR/"+aLinks.size()+"/PAGE INDEX/"+pageIndex);
                 
-                if(a_links.size() <= cursor_index){
-                	page_index++;
-                	cursor_index = 0; 
+                if(aLinks.size() <= cursorIndex){
+                	pageIndex++;
+                	cursorIndex = 0; 
                     continue;
                 }
                 
-                if((a_links.size()-1) <= cursor_index){
+                if((aLinks.size()-1) <= cursorIndex){
                 	break;
                 }
                 
-                List<WebElement> tds = driver.findElements(By.cssSelector(".de-news > table > tbody > tr.table-contents:nth-child("+(cursor_index+1)+") > td"));
-                WebElement click_target = tds.get(1);
+                List<WebElement> tds = driver.findElements(By.cssSelector(".de-news > table > tbody > tr.table-contents:nth-child("+(cursorIndex+1)+") > td"));
+                WebElement clickTarget = tds.get(1);
                 String board_type = tds.get(0).getText();
-                String title = click_target.getText();
-                vo.setBoard_type(board_type);
+                String title = clickTarget.getText();
+                vo.setDocType(board_type);
                 vo.setTitle(title);
                 
                 JavascriptExecutor executor = (JavascriptExecutor) driver;
-                String click_script = click_target.getAttribute("onclick");
-//                System.out.println(click_script);
-                executor.executeScript(click_script);
+                String clickScript = clickTarget.getAttribute("onclick");
+                executor.executeScript(clickScript);
                 waitingResponse(2000);
                 
-//                String detail_path = driver.getCurrentUrl();
-//                System.out.println(detail_path);
-                vo.setDetail_url(click_script);
+                vo.setDetailUrl(clickScript);
                 
-                WebElement p_article = driver.findElement(By.cssSelector("div.de-open-container > div.detail-contents"));
-                vo.setDocuments(p_article.getAttribute("innerHTML"));
+                WebElement pArticle = driver.findElement(By.cssSelector("div.de-open-container > div.detail-contents"));
+                vo.setContents(pArticle.getAttribute("innerHTML"));
             	
             	
-            	if(check_duplicate_vo != null) {
+            	if(checkDuplicateVo != null) {
             		if(
-            				check_duplicate_vo.getTitle().equals(vo.getTitle())  
-            				&& check_duplicate_vo.getBoard_type().equals(vo.getBoard_type())
+            				checkDuplicateVo.getTitle().equals(vo.getTitle())  
+            				&& checkDuplicateVo.getDocType().equals(vo.getDocType())
     				) {
                 		// 기존에 등록된 곳 까지 insert 시
             			logger.info(site.getCode()+"/ALREADY REGISTER DOCUMENT ");
-            			logger.info("TITLE::"+check_duplicate_vo.getTitle()+"/BOARD_TYPE::"+check_duplicate_vo.getBoard_type());
+            			logger.info("TITLE::"+checkDuplicateVo.getTitle()+"/BOARD_TYPE::"+checkDuplicateVo.getDocType());
                 		break;
                 	}
             	}
             	
             	
-            	vo.setIsFile(false);
-            	vo.setStatus("S");
+            	vo.setFileYn(false);
+            	vo.setSuccessYn("Y");
             	dao.insertCrawling(vo);
             	
-            	retry_cnt = 0;
-            	cursor_index++;
+            	retryCnt = 0;
+            	cursorIndex++;
             }catch(Exception e){
             	// retry 경남은  #### Cusor 3번 게시글이 에러가 남.
             	e.printStackTrace();
-            	if(retry_cnt < RETRY_CNT) {
-            		logger.warn(site.getCode()+"/CURRENT CURSOR/"+cursor_index+"/PAGE INDEX/"+page_index+"/RETRY CNT/"+retry_cnt);
-            		retry_cnt++;
+            	if(retryCnt < RETRY_CNT) {
+            		logger.warn(site.getCode()+"/CURRENT CURSOR/"+cursorIndex+"/PAGE INDEX/"+pageIndex+"/RETRY CNT/"+retryCnt);
+            		retryCnt++;
             		continue;
-            	}else if(retry_cnt == RETRY_CNT) {
-            		vo.setIsFile(false);
-                	vo.setStatus("F");
+            	}else if(retryCnt == RETRY_CNT) {
+            		vo.setFileYn(false);
+                	vo.setSuccessYn("N");
                 	dao.insertCrawling(vo);
-                	retry_cnt++;
+                	retryCnt++;
                 	// 오류가 났을 시 다음 커서로 이동                
-                    cursor_index++;
+                    cursorIndex++;
                     continue;
             	}else {
             		//커서가 이동한뒤에도 반복적 오류가 발생하면 중단
             		logger.error("ABOVE THIS LINE, ERROR OCCURING AND PLEASE READ LOGS");
-            		logger.error(site.getCode()+"/CURRENT CURSOR/"+cursor_index+"/PAGE INDEX/"+page_index+"/RETRY CNT/"+retry_cnt);
+            		logger.error(site.getCode()+"/CURRENT CURSOR/"+cursorIndex+"/PAGE INDEX/"+pageIndex+"/RETRY CNT/"+retryCnt);
             		logger.error(site.getCode()+"/SITE URL/"+site.getValue());
             		logger.error("ABOVE THIS LINE, ERROR OCCURING AND PLEASE READ LOGS");
             		break;
@@ -547,110 +540,111 @@ public class CrawlingServiceImpl implements CrawlingService{
 		options.addArguments("headless");		
 		WebDriver driver = new ChromeDriver(options);	
 		
-		CrawlingVO check_duplicate_vo = dao.checkDuplicateCrawling(site.getCode());
+		CrawlingVO checkDuplicateVo = dao.checkDuplicateCrawling(site.getCode());
 		
 		String url = site.getValue();
 		// 몇번째 row 인지 
-        int cursor_index = 0;
+        int cursorIndex = 0;
         // 현재 페이지
-        int page_index = 1;
+        int pageIndex = 1;
         // 실패시 재시도 횟수 
-        int retry_cnt = 0;
+        int retryCnt = 0;
         
         while(true){	
             CrawlingVO vo = new CrawlingVO();
-            vo.setSite(site.getCode());
+            vo.setSiteType(site.getCode());
+            
             try{
-            	String current_url = url + "&page="+ page_index;
-            	vo.setSite_url(current_url);
+            	String current_url = url + "&page="+ pageIndex;
+            	vo.setSiteUrl(current_url);
                 pageMove(driver, current_url, 2500);
 
-                List<WebElement> a_links = driver.findElements(By.cssSelector("#list_body > tr > td > a"));
-                if (a_links.size() == 0 ) {
+                List<WebElement> aLinks = driver.findElements(By.cssSelector("#list_body > tr > td > a"));
+                if (aLinks.size() == 0 ) {
                 	throw new Exception("Fail to Call Document");
                 }
                 
-                logger.info(site.getCode()+"/CURRENT CURSOR/"+cursor_index+"/MAX CURSOR/"+a_links.size()+"/PAGE INDEX/"+page_index);
+                logger.info(site.getCode()+"/CURRENT CURSOR/"+cursorIndex+"/MAX CURSOR/"+aLinks.size()+"/PAGE INDEX/"+pageIndex);
                 
-                if(a_links.size() <= cursor_index){
-                	page_index++;
-                	cursor_index = 0; 
+                if(aLinks.size() <= cursorIndex){
+                	pageIndex++;
+                	cursorIndex = 0; 
                     continue;
                 }
                 
-                List<WebElement> tds = driver.findElements(By.cssSelector("#list_body > tr:nth-child("+(cursor_index+1)+") > td"));
-                String board_no = tds.get(0).getText();
-                vo.setBoard_no(Integer.parseInt(board_no));
+                List<WebElement> tds = driver.findElements(By.cssSelector("#list_body > tr:nth-child("+(cursorIndex+1)+") > td"));
+                String docSeq = tds.get(0).getText();
+                vo.setDocSeq(Integer.parseInt(docSeq));
+                
                 String writer = tds.get(2).getText();
                 vo.setWriter(writer);
-                List<WebElement> is_files = tds.get(4).findElements(By.cssSelector("span"));
-                vo.setIsFile(false);
-                if(is_files.size() != 0) {
-            		vo.setIsFile(true);
+                List<WebElement> fileYN = tds.get(4).findElements(By.cssSelector("span"));
+                vo.setFileYn(false);
+                if(fileYN.size() != 0) {
+            		vo.setFileYn(true);
                 }
-                String created_document = tds.get(5).getText();
-                vo.setCreated_document(created_document);
+                String docRegDt = tds.get(5).getText();
+                vo.setDocRegDt(docRegDt);
                 
-                WebElement a = a_links.get(cursor_index);
+                
+                WebElement a = aLinks.get(cursorIndex);
                 String title = a.getText();
                 vo.setTitle(title);
                 a.click();
                 waitingResponse(2500);
 
-                String detail_path = driver.getCurrentUrl();
-                vo.setDetail_url(detail_path);
-//                pageMove(driver, detail_path, 2000);
+                String detailPath = driver.getCurrentUrl();
+                vo.setDetailUrl(detailPath);
 
-                WebElement p_article = driver.findElement(By.cssSelector("div.brd_viewer > div.vw_article"));
-                vo.setDocuments(p_article.getAttribute("innerHTML"));
+                WebElement pArticle = driver.findElement(By.cssSelector("div.brd_viewer > div.vw_article"));
+                vo.setContents(pArticle.getAttribute("innerHTML"));
                 
-            	vo.setBoard_type(null);
+            	vo.setDocType(null);
             	
-            	
-            	
-            	if(check_duplicate_vo != null) {
+            	if(checkDuplicateVo != null) {
             		if(
-        				check_duplicate_vo.getTitle().equals(vo.getTitle())  
-        				&& check_duplicate_vo.getWriter().equals(vo.getWriter())
-        				&& check_duplicate_vo.getCreated_document().substring(0,10).equals(vo.getCreated_document())
+        				checkDuplicateVo.getTitle().equals(vo.getTitle())  
+        				&& checkDuplicateVo.getWriter().equals(vo.getWriter())
+        				&& checkDuplicateVo.getDocRegDt().substring(0,10).equals(vo.getDocRegDt())
     				) {
                 		// 기존에 등록된 곳 까지 insert 시
                 		logger.info(site.getCode()+"/ALREADY REGISTER DOCUMENT");
-                		logger.info("TITLE::"+check_duplicate_vo.getTitle()+"/WRITER::"+check_duplicate_vo.getWriter()+"/CRETED_DOCUMENT:"+check_duplicate_vo.getCreated_document());
+                		logger.info("TITLE::"+checkDuplicateVo.getTitle()+"/WRITER::"+checkDuplicateVo.getWriter()+"/CRETED_DOCUMENT:"+checkDuplicateVo.getDocRegDt());
                 		break;
                 	}
             	}
             	
             	
-            	vo.setStatus("S");
+            	vo.setSuccessYn("Y");
             	dao.insertCrawling(vo);
             	
-            	if("1".equals(board_no) ) {
+            	if("1".equals(docSeq) ) {
             		// 끝까지 insert 시도 
             		logger.info(site.getCode()+"/END DOCUMENT");
             		break;
             	}
             	
-            	retry_cnt = 0;
-            	cursor_index++;
+            	retryCnt = 0;
+            	cursorIndex++;
             }catch(Exception e){
             	// retry 경남은  #### Cusor 3번 게시글이 에러가 남.
             	e.printStackTrace();
-            	if(retry_cnt < RETRY_CNT) {
-            		logger.warn(site.getCode()+"/CURRENT CURSOR/"+cursor_index+"/PAGE INDEX/"+page_index+"/RETRY CNT/"+retry_cnt);
-            		retry_cnt++;
+            	if(retryCnt < RETRY_CNT) {
+            		logger.warn(site.getCode()+"/CURRENT CURSOR/"+cursorIndex+"/PAGE INDEX/"+pageIndex+"/RETRY CNT/"+retryCnt);
+            		retryCnt++;
             		continue;
-            	}else if(retry_cnt == RETRY_CNT) {
-            		vo.setStatus("F");
+            	}else if(retryCnt == RETRY_CNT) {
+            		vo.setSuccessYn("N");
+            		
                 	dao.insertCrawling(vo);
-                	retry_cnt++;
+                	retryCnt++;
                     // 오류가 났을 시 다음 커서로 이동                
-                    cursor_index++;
+                    cursorIndex++;
                     continue;
             	}else {
             		//커서가 이동한뒤에도 반복적 오류가 발생하면 중단
             		logger.error("ABOVE THIS LINE, ERROR OCCURING AND PLEASE READ LOGS");
-            		logger.error(site.getCode()+"/CURRENT CURSOR/"+cursor_index+"/PAGE INDEX/"+page_index+"/RETRY CNT/"+retry_cnt);
+            		logger.error(site.getCode()+"/CURRENT CURSOR/"+cursorIndex+"/PAGE INDEX/"+pageIndex+"/RETRY CNT/"+retryCnt);
             		logger.error(site.getCode()+"/SITE URL/"+site.getValue());
             		logger.error("ABOVE THIS LINE, ERROR OCCURING AND PLEASE READ LOGS");
             		break;
