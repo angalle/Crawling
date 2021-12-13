@@ -48,10 +48,10 @@
 	<context:component-scan base-package="com.srpost.cm.biz.crawling.service"></context:component-scan>
 	<context:component-scan base-package="com.srpost.cm.biz.crawling.schdule"></context:component-scan>
 	
-    <task:scheduled-tasks scheduler="scheduledTasks">
-        <task:scheduled ref="GNscheduler" method="excuteGNJobs" cron="0 35 * * * *" />
+    <!-- <task:scheduled-tasks scheduler="scheduledTasks">
+        <task:scheduled ref="GNscheduler" method="excuteGNJobs" cron="0 0/1 * * * *" />
     </task:scheduled-tasks>
 
-    <task:scheduler id="scheduledTasks" />
+    <task:scheduler id="scheduledTasks" /> -->
 
 </beans>
