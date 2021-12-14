@@ -9,11 +9,11 @@ public class CrawlingVO {
 	private String title;
 	private String writer;
 	private String docRegDt;
-	private Boolean fileYn;
+	private Boolean fileYn = false;
 	private String contents;
 	private String detailUrl;
-	private String siteUrl;
-	private String successYn;
+	private String formParams;
+	private String successYn = "N";
 	private String regDt;
 	
 
@@ -54,9 +54,11 @@ public class CrawlingVO {
 	}
 
 	public void setDocRegDt(String docRegDt) {
-		docRegDt = docRegDt.replace(".", "-");
-		this.docRegDt = docRegDt;
-		this.docRegDt = docRegDt;
+		if(docRegDt != null) {
+			docRegDt = docRegDt.replace(".", "-");
+			this.docRegDt = docRegDt;
+		}		
+		this.docRegDt = null;
 	}
 
 	public Boolean getFileYn() {
@@ -81,14 +83,6 @@ public class CrawlingVO {
 
 	public void setDetailUrl(String detailUrl) {
 		this.detailUrl = detailUrl;
-	}
-
-	public String getSiteUrl() {
-		return siteUrl;
-	}
-
-	public void setSiteUrl(String siteUrl) {
-		this.siteUrl = siteUrl;
 	}
 
 	public String getSuccessYn() {
@@ -121,6 +115,14 @@ public class CrawlingVO {
 
 	public void setWriter(String writer) {
 		this.writer = writer;
+	}
+
+	public String getFormParams() {
+		return formParams;
+	}
+
+	public void setFormParams(String formParams) {
+		this.formParams = formParams;
 	}
 
 }

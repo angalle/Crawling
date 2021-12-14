@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import com.srpost.cm.biz.crawling.CrawlingUtils;
 import com.srpost.cm.biz.crawling.Site;
 import com.srpost.cm.biz.crawling.dao.CrawlingDAO;
 import com.srpost.cm.biz.crawling.vo.CrawlingVO;
@@ -43,18 +44,25 @@ public class CrawlingServiceImpl implements CrawlingService{
         // 실패시 재시도 횟수 
         int retryCnt = 0;
         
+        // 반복문의 flag, 1일때 종료 
+        String docSeq = "";
+        
         String current_url = url;
-        pageMove(driver, current_url, 2000);
-        while(true){	
+        CrawlingUtils.pageMove(driver, current_url, 2000);
+        while(!"1".equals(docSeq)){	
             CrawlingVO vo = new CrawlingVO();
-            vo.setSiteType(site.getCode());
+            String siteType = site.getCode();
+            String writer = null;
+            boolean fileYn = false;
+            String docRegDt = null;
+            String title = null;
+            String detailPath = null;
+            String contents = null;
+            String board_type = null;
+            
             try{
-            	vo.setSiteUrl(current_url);   
-
-                List<WebElement> aLinks = driver.findElements(By.cssSelector("table > tbody > tr"));
-                if (aLinks.size() == 0 ) {
-                	throw new Exception("Fail to Call Document");
-                }
+            	
+            	List<WebElement> aLinks = CrawlingUtils.getaLinkInTable(driver, "table > tbody > tr");
                 
                 logger.info(site.getCode()+"/CURRENT CURSOR/"+cursorIndex+"/MAX CURSOR/"+aLinks.size()+"/PAGE INDEX/"+pageIndex);
                 
@@ -62,68 +70,41 @@ public class CrawlingServiceImpl implements CrawlingService{
                 	pageIndex++;
                 	cursorIndex = 0;
                 	
-                	JavascriptExecutor executor = (JavascriptExecutor) driver;
-                	
-                	// 이 사이트는 목록으로 가는 방법이 목록버튼 눌러서 이동하는 방법이 대기시간이 적어 이 방법으로 진행한다 . 
-                	executor.executeScript("goPaging("+pageIndex+")");
-                	waitingResponse(2000);
+                	CrawlingUtils.executeJavascript(driver, "goPaging("+pageIndex+")");
+                	CrawlingUtils.waitingResponse(2000);
                     continue;
                 }
                 
                 
                 List<WebElement> tds = driver.findElements(By.cssSelector("table > tbody > tr:nth-child("+(cursorIndex+1)+") > td"));
-                String docSeq = tds.get(0).getText();
-                vo.setDocSeq(Integer.parseInt(docSeq));
+                docSeq = tds.get(0).getText();
                 WebElement clickTarget = tds.get(1).findElement(By.cssSelector("a"));
-                String title = clickTarget.getText();
-                vo.setTitle(title);
-                
-                String docRegDt = tds.get(2).getText().replace(".", "-");
-                vo.setDocRegDt(docRegDt);
-                
-                List<WebElement> isFile = tds.get(3).findElements(By.cssSelector("img"));
-                vo.setFileYn(false);
-                if(isFile.size() != 0 ) {
-                	vo.setFileYn(true);
-                }
+                String postBoardSeqParam = clickTarget.getAttribute("boardseq");
+                title = clickTarget.getText();
+                docRegDt = tds.get(2).getText().replace(".", "-");
+                fileYn = CrawlingUtils.isFileCheck(tds.get(3).findElements(By.cssSelector("img")));
                 
                 clickTarget.click();
-                waitingResponse(2000);
+                CrawlingUtils.waitingResponse(2000);
 
-                String detailUrl = driver.getCurrentUrl();
-                vo.setDetailUrl(detailUrl);
+                detailPath = driver.getCurrentUrl();
+                String json = "{" +
+                    	"\"targetBoardSeq\": "+postBoardSeqParam+"," +
+                    "}";
+                contents = driver.findElement(By.cssSelector("textarea")).getAttribute("innerHTML");
                 
+                vo = CrawlingUtils.setVOProperty(vo, docSeq, writer, title, fileYn, detailPath, docRegDt, contents, board_type, siteType, json);
                 
-                WebElement pArticle = driver.findElement(By.cssSelector("textarea"));
-                vo.setContents(pArticle.getAttribute("innerHTML"));
-                
-                if(checkDuplicateVo != null) {
-            		if(
-            				checkDuplicateVo.getTitle().equals(vo.getTitle())  
-        				&& checkDuplicateVo.getDocSeq() == vo.getDocSeq()
-        				&& checkDuplicateVo.getDocRegDt().substring(0, 10).equals(vo.getDocRegDt())
-    				) {
-                		// 기존에 등록된 곳 까지 insert 시
-                		logger.info(site.getCode()+"/ALREADY REGISTER DOCUMENT");
-                		logger.info("TITLE::"+checkDuplicateVo.getTitle()+"/WRITER::"+checkDuplicateVo.getWriter()+"/CRETED_DOCUMENT:"+checkDuplicateVo.getDocRegDt());
-                		break;
-                	}
+                if(CrawlingUtils.isDuplicateSavePoint(checkDuplicateVo, vo)) {
+            		break;
             	}
-            	
             	
             	vo.setSuccessYn("Y");
             	dao.insertCrawling(vo);
             	
-            	if("1".equals(docSeq) ) {
-            		// 끝까지 insert 시도 
-            		logger.info(site.getCode()+"/END DOCUMENT");
-            		break;
-            	}
-            	
             	// 이 사이트는 목록으로 가는 방법이 목록버튼 눌러서 이동하는 방법이 대기시간이 적어 이 방법으로 진행한다 .
-            	WebElement backListPage = driver.findElement(By.cssSelector("div.contain-div > dl > dd.mar_top_15.txt_alignR > a"));
-            	backListPage.click();
-            	waitingResponse(2000);
+            	driver.findElement(By.cssSelector("div.contain-div > dl > dd.mar_top_15.txt_alignR > a")).click();
+            	CrawlingUtils.waitingResponse(2000);
             	
             	retryCnt = 0;
             	cursorIndex++;
@@ -174,18 +155,24 @@ public class CrawlingServiceImpl implements CrawlingService{
         // 실패시 재시도 횟수 
         int retryCnt = 0;
         
-        while(true){	
+        // 반복문의 flag, 1일때 종료 
+        String docSeq = "";
+        
+        while(!"1".equals(docSeq)){	
             CrawlingVO vo = new CrawlingVO();
-            vo.setSiteType(site.getCode());
+            String siteType = site.getCode();
+            String writer = null;
+            boolean fileYn = false;
+            String docRegDt = null;
+            String title = null;
+            String detailPath = null;
+            String contents = null;
+            String board_type = null;
+            
             try{
-            	String current_url = url;
-            	vo.setSiteUrl(current_url);
-                pageMove(driver, current_url, 2000);
-
-                List<WebElement> aLinks = driver.findElements(By.cssSelector("table > tbody > tr"));
-                if (aLinks.size() == 0 ) {
-                	throw new Exception("Fail to Call Document");
-                }
+            	CrawlingUtils.pageMove(driver, url, 2500);
+                
+                List<WebElement> aLinks = CrawlingUtils.getaLinkInTable(driver, "table > tbody > tr");
                 
                 logger.info(site.getCode()+"/CURRENT CURSOR/"+cursorIndex+"/MAX CURSOR/"+aLinks.size()+"/PAGE INDEX/"+pageIndex);
                 
@@ -197,56 +184,27 @@ public class CrawlingServiceImpl implements CrawlingService{
                 
                 
                 List<WebElement> tds = driver.findElements(By.cssSelector("table > tbody > tr:nth-child("+(cursorIndex+1)+") > td"));
-                String docSeq = tds.get(0).getText();
-                vo.setDocSeq(Integer.parseInt(docSeq));
+                docSeq = tds.get(0).getText();
                 WebElement clickTarget = tds.get(1).findElement(By.cssSelector("a"));
-                String title = clickTarget.getText();
-                vo.setTitle(title);
-                String writer = tds.get(2).getText();
-                vo.setWriter(writer);
-                
-                String docRegDt = tds.get(4).getText();
-                vo.setDocRegDt(docRegDt);
+                title = clickTarget.getText();
+                writer = tds.get(2).getText();
+                docRegDt = tds.get(4).getText();
                 
                 clickTarget.click();
-                waitingResponse(2000);
-
-                String detailPath = driver.getCurrentUrl();
-                vo.setDetailUrl(detailPath);
+                CrawlingUtils.waitingResponse(2500);
                 
+                detailPath = driver.getCurrentUrl();
+                contents = driver.findElement(By.cssSelector("#bo_v_atc")).getAttribute("innerHTML");
+                fileYn = CrawlingUtils.isFileCheck(driver.findElements(By.cssSelector("#bo_v_file")));
                 
-                WebElement pArticle = driver.findElement(By.cssSelector("#bo_v_atc"));
-                vo.setContents(pArticle.getAttribute("innerHTML"));
+                vo = CrawlingUtils.setVOProperty(vo, docSeq, writer, title, fileYn, detailPath, docRegDt, contents, board_type, siteType, null);
                 
-                List<WebElement> files = driver.findElements(By.cssSelector("#bo_v_file"));
-                vo.setFileYn(false);
-                if(files.size() != 0) {
-                	vo.setFileYn(true);
-                }
-                
-            	
-                if(checkDuplicateVo != null) {
-            		if(
-        				checkDuplicateVo.getTitle().equals(vo.getTitle())  
-        				&& checkDuplicateVo.getWriter().equals(vo.getWriter())
-        				&& checkDuplicateVo.getDocRegDt().substring(0,10).equals(vo.getDocRegDt())
-    				) {
-                		// 기존에 등록된 곳 까지 insert 시
-                		logger.info(site.getCode()+"/ALREADY REGISTER DOCUMENT");
-                		logger.info("TITLE::"+checkDuplicateVo.getTitle()+"/WRITER::"+checkDuplicateVo.getWriter()+"/CRETED_DOCUMENT:"+checkDuplicateVo.getDocRegDt());
-                		break;
-                	}
+                if(CrawlingUtils.isDuplicateSavePoint(checkDuplicateVo, vo)) {
+            		break;
             	}
-            	
             	
             	vo.setSuccessYn("Y");
             	dao.insertCrawling(vo);
-            	
-            	if("1".equals(docSeq) ) {
-            		// 끝까지 insert 시도 
-            		logger.info(site.getCode()+"/END DOCUMENT");
-            		break;
-            	}
             	
             	retryCnt = 0;
             	cursorIndex++;
@@ -258,8 +216,7 @@ public class CrawlingServiceImpl implements CrawlingService{
             		retryCnt++;
             		continue;
             	}else if(retryCnt == RETRY_CNT) {
-            		vo.setFileYn(false);
-                	vo.setSuccessYn("N");
+            		vo = CrawlingUtils.setVOProperty(vo, docSeq, writer, title, fileYn, detailPath, docRegDt, contents, board_type, siteType, null);
                 	dao.insertCrawling(vo);
                 	retryCnt++;
                 	// 오류가 났을 시 다음 커서로 이동                
@@ -298,106 +255,75 @@ public class CrawlingServiceImpl implements CrawlingService{
         // 실패시 재시도 횟수 
         int retryCnt = 0;
         
-        pageMove(driver, url, 3000);
-        while(true){	
+        // 반복문의 flag, 1일때 종료 
+        String docSeq = "";
+        
+        CrawlingUtils.pageMove(driver, url, 3000);
+        while(!"1".equals(docSeq)){	
             CrawlingVO vo = new CrawlingVO();
-            vo.setSiteType(site.getCode());
+            String siteType = site.getCode();
+            String writer = null;
+            boolean fileYn = false;
+            String docRegDt = null;
+            String title = null;
+            String detailPath = null;
+            String contents = null;
+            String board_type = null;
             
             try{       	
-                vo.setSiteUrl(url);
-                
-                List<WebElement> aLinks = driver.findElements(By.cssSelector("table > tbody > tr"));
-                if (aLinks.size() == 0 ) {
-                	throw new Exception("Fail to Call Document");
-                }
+            	List<WebElement> aLinks = CrawlingUtils.getaLinkInTable(driver, "table > tbody > tr");
                 
                 logger.info(site.getCode()+"/CURRENT CURSOR/"+cursorIndex+"/MAX CURSOR/"+aLinks.size()+"/PAGE INDEX/"+pageIndex);
                 
                 if(aLinks.size() <= cursorIndex){
                 	pageIndex++;
                 	cursorIndex = 0;
-                	JavascriptExecutor executor = (JavascriptExecutor) driver;
-                	String javascript_function = "doBbsFPag("+pageIndex+");";
-                    executor.executeScript(javascript_function);
-                    waitingResponse(2000);
-                    
-//                  url = driver.getCurrentUrl();
+                	
+                	CrawlingUtils.executeJavascript(driver, "doBbsFPag("+pageIndex+");");
+                    CrawlingUtils.waitingResponse(2000);
                     continue;
                 }
                 
                 List<WebElement> tds = driver.findElements(By.cssSelector("table > tbody > tr:nth-child("+(cursorIndex+1)+") > td"));
-                String docSeq = tds.get(0).getText();
-                vo.setDocSeq(Integer.parseInt(docSeq));
+                
+                docSeq = tds.get(0).getText();
                 WebElement clickTarget = tds.get(1).findElement(By.cssSelector("a"));
-                String title = clickTarget.getText();
-                vo.setTitle(title);
-                String writer = tds.get(2).getText();
-                vo.setWriter(writer);
-                List<WebElement> isFileElements = tds.get(3).findElements(By.cssSelector("a"));
-                vo.setFileYn(false);
-                if(isFileElements.size() != 0) {
-                	vo.setFileYn(true);
-                }
+                title = clickTarget.getText();
+                writer = tds.get(2).getText();
+                fileYn = CrawlingUtils.isFileCheck(tds.get(3).findElements(By.cssSelector("a")));
+                docRegDt = tds.get(4).getText();
                 
-                String docRegDt = tds.get(4).getText();
-                vo.setDocRegDt(docRegDt);
+                CrawlingUtils.executeAttributeJavascript(driver, "onclick", clickTarget);
+                CrawlingUtils.waitingResponse(2000);
                 
-                
-                JavascriptExecutor executor = (JavascriptExecutor) driver;
-                String clickScript = clickTarget.getAttribute("onclick");
-                clickScript = clickScript.replace("return false;", "");                
-                executor.executeScript(clickScript);
-                waitingResponse(2000);
-                String detailPath = driver.getCurrentUrl();
-                vo.setDetailUrl(detailPath);
-                
-                
-                WebElement pArticle = driver.findElement(By.cssSelector("#editContents"));
-                vo.setContents(pArticle.getAttribute("innerHTML"));
+                detailPath = driver.getCurrentUrl();
+                contents = driver.findElement(By.cssSelector("#editContents")).getAttribute("innerHTML");
             	
-            	
-                if(checkDuplicateVo != null) {
-            		if(
-        				checkDuplicateVo.getTitle().equals(vo.getTitle())  
-        				&& checkDuplicateVo.getWriter().equals(vo.getWriter())
-        				&& checkDuplicateVo.getDocRegDt().substring(0,10).equals(vo.getDocRegDt())
-    				) {
-                		// 기존에 등록된 곳 까지 insert 시
-            			logger.info(site.getCode()+"/ALREADY REGISTER DOCUMENT ");
-            			logger.info("TITLE::"+checkDuplicateVo.getTitle()+"/WRITER::"+checkDuplicateVo.getWriter()+"/CRETED_DOCUMENT:"+checkDuplicateVo.getDocRegDt());
-                		break;
-                	}
+                vo = CrawlingUtils.setVOProperty(vo, docSeq, writer, title, fileYn, detailPath, docRegDt, contents, board_type, siteType, null);
+                
+                if(CrawlingUtils.isDuplicateSavePoint(checkDuplicateVo, vo)) {
+            		break;
             	}
             	
             	
             	vo.setSuccessYn("Y");
             	dao.insertCrawling(vo);
             	
-            	if("1".equals(docSeq) ) {
-            		// 끝까지 insert 시도 
-            		logger.info(site.getCode()+"/END DOCUMENT");
-            		break;
-            	}
-            	
             	// 이 사이트는 목록으로 가는 방법이 목록버튼 눌러서 이동하는 방법이 대기시간이 적어 이 방법으로 진행한다 . 
             	WebElement backListPage = driver.findElement(By.cssSelector("div.btn_box > a.go_list"));
-            	String backListPageScript = backListPage.getAttribute("onclick");
-            	executor.executeScript(backListPageScript);
-            	waitingResponse(2000);
+            	CrawlingUtils.executeAttributeJavascript(driver, "onclick", backListPage);
+            	CrawlingUtils.waitingResponse(2000);
             	
             	retryCnt = 0;
             	cursorIndex++;
             }catch(Exception e){
-            	// retry 경남은  #### Cusor 3번 게시글이 에러가 남.
-            	System.out.println(e.getMessage());
             	e.printStackTrace();
             	if(retryCnt < RETRY_CNT) {
             		logger.warn(site.getCode()+"/CURRENT CURSOR/"+cursorIndex+"/PAGE INDEX/"+pageIndex+"/RETRY CNT/"+retryCnt);
             		retryCnt++;
             		continue;
             	}else if(retryCnt == RETRY_CNT) {
-            		vo.setFileYn(false);
-                	vo.setSuccessYn("N");
+            		vo = CrawlingUtils.setVOProperty(vo, docSeq, writer, title, fileYn, detailPath, docRegDt, contents, board_type, siteType, null);
                 	dao.insertCrawling(vo);
                 	retryCnt++;
                 	// 오류가 났을 시 다음 커서로 이동                
@@ -439,18 +365,25 @@ public class CrawlingServiceImpl implements CrawlingService{
         // 실패시 재시도 횟수 
         int retryCnt = 0;
         
-        while(true){	
+        // 반복문의 flag, 1일때 종료 
+        String docSeq = null;
+        CrawlingUtils.pageMove(driver, url, 2000);
+        List<WebElement> maxLinkSize = CrawlingUtils.getaLinkInTable(driver, ".de-news > table > tbody > tr.table-contents");
+        
+        while((maxLinkSize.size()-1) >= cursorIndex){	
             CrawlingVO vo = new CrawlingVO();
-            vo.setSiteType(site.getCode());
+            String siteType = site.getCode();
+            String writer = null;
+            boolean fileYn = false;
+            String docRegDt = null;
+            String title = null;
+            String detailPath = null;
+            String contents = null;
+            String board_type = null;
+            
             try{
-            	String current_url = url;
-            	vo.setSiteUrl(current_url);
-                pageMove(driver, current_url, 2000);
-
-                List<WebElement> aLinks = driver.findElements(By.cssSelector(".de-news > table > tbody > tr.table-contents"));
-                if (aLinks.size() == 0 ) {
-                	throw new Exception("Fail to Call Document");
-                }
+            	CrawlingUtils.pageMove(driver, url, 2000);
+                List<WebElement> aLinks = CrawlingUtils.getaLinkInTable(driver, ".de-news > table > tbody > tr.table-contents");
                 
                 logger.info(site.getCode()+"/CURRENT CURSOR/"+cursorIndex+"/MAX CURSOR/"+aLinks.size()+"/PAGE INDEX/"+pageIndex);
                 
@@ -460,42 +393,27 @@ public class CrawlingServiceImpl implements CrawlingService{
                     continue;
                 }
                 
-                if((aLinks.size()-1) <= cursorIndex){
-                	break;
-                }
-                
                 List<WebElement> tds = driver.findElements(By.cssSelector(".de-news > table > tbody > tr.table-contents:nth-child("+(cursorIndex+1)+") > td"));
                 WebElement clickTarget = tds.get(1);
-                String board_type = tds.get(0).getText();
-                String title = clickTarget.getText();
-                vo.setDocType(board_type);
-                vo.setTitle(title);
+                board_type = tds.get(0).getText();
+                title = clickTarget.getText();
                 
-                JavascriptExecutor executor = (JavascriptExecutor) driver;
-                String clickScript = clickTarget.getAttribute("onclick");
-                executor.executeScript(clickScript);
-                waitingResponse(2000);
+                CrawlingUtils.executeAttributeJavascript(driver, null, clickTarget);
+                CrawlingUtils.waitingResponse(2000);
                 
-                vo.setDetailUrl(clickScript);
-                
-                WebElement pArticle = driver.findElement(By.cssSelector("div.de-open-container > div.detail-contents"));
-                vo.setContents(pArticle.getAttribute("innerHTML"));
+                detailPath = driver.getCurrentUrl();
+                String json = "{" +
+                	"\"bizSeq\": 878," +
+                	"\"history\": {\"url\":[\"/biz/infoList\"]}" +
+                "}";
+                contents = driver.findElement(By.cssSelector("div.de-open-container > div.detail-contents")).getAttribute("innerHTML");
             	
-            	
-            	if(checkDuplicateVo != null) {
-            		if(
-            				checkDuplicateVo.getTitle().equals(vo.getTitle())  
-            				&& checkDuplicateVo.getDocType().equals(vo.getDocType())
-    				) {
-                		// 기존에 등록된 곳 까지 insert 시
-            			logger.info(site.getCode()+"/ALREADY REGISTER DOCUMENT ");
-            			logger.info("TITLE::"+checkDuplicateVo.getTitle()+"/BOARD_TYPE::"+checkDuplicateVo.getDocType());
-                		break;
-                	}
+                vo = CrawlingUtils.setVOProperty(vo, docSeq, writer, title, fileYn, detailPath, docRegDt, contents, board_type, siteType, json);
+                
+            	if(CrawlingUtils.isDuplicateSavePointByTwoType(checkDuplicateVo, vo)) {
+            		break;
             	}
             	
-            	
-            	vo.setFileYn(false);
             	vo.setSuccessYn("Y");
             	dao.insertCrawling(vo);
             	
@@ -509,8 +427,7 @@ public class CrawlingServiceImpl implements CrawlingService{
             		retryCnt++;
             		continue;
             	}else if(retryCnt == RETRY_CNT) {
-            		vo.setFileYn(false);
-                	vo.setSuccessYn("N");
+            		vo = CrawlingUtils.setVOProperty(vo, docSeq, writer, title, fileYn, detailPath, docRegDt, contents, board_type, siteType, null);
                 	dao.insertCrawling(vo);
                 	retryCnt++;
                 	// 오류가 났을 시 다음 커서로 이동                
@@ -549,23 +466,30 @@ public class CrawlingServiceImpl implements CrawlingService{
         int pageIndex = 1;
         // 실패시 재시도 횟수 
         int retryCnt = 0;
+        // 반복문의 flag, 1일때 종료 
+        String docSeq = null;
         
-        while(true){	
+        
+        while(!"1".equals(docSeq)){	
             CrawlingVO vo = new CrawlingVO();
-            vo.setSiteType(site.getCode());
+            String siteType = site.getCode();
+            String writer = null;
+            boolean fileYn = false;
+            String docRegDt = null;
+            String title = null;
+            String detailPath = null;
+            String contents = null;
             
             try{
             	String current_url = url + "&page="+ pageIndex;
-            	vo.setSiteUrl(current_url);
-                pageMove(driver, current_url, 2500);
+            	CrawlingUtils.pageMove(driver, current_url, 2500);
 
-                List<WebElement> aLinks = driver.findElements(By.cssSelector("#list_body > tr > td > a"));
-                if (aLinks.size() == 0 ) {
-                	throw new Exception("Fail to Call Document");
-                }
+                List<WebElement> aLinks = CrawlingUtils.getaLinkInTable(driver, "#list_body > tr > td > a");
                 
+                // 현재 상태 
                 logger.info(site.getCode()+"/CURRENT CURSOR/"+cursorIndex+"/MAX CURSOR/"+aLinks.size()+"/PAGE INDEX/"+pageIndex);
                 
+                // 다음 페이지 
                 if(aLinks.size() <= cursorIndex){
                 	pageIndex++;
                 	cursorIndex = 0; 
@@ -573,56 +497,28 @@ public class CrawlingServiceImpl implements CrawlingService{
                 }
                 
                 List<WebElement> tds = driver.findElements(By.cssSelector("#list_body > tr:nth-child("+(cursorIndex+1)+") > td"));
-                String docSeq = tds.get(0).getText();
-                vo.setDocSeq(Integer.parseInt(docSeq));
                 
-                String writer = tds.get(2).getText();
-                vo.setWriter(writer);
-                List<WebElement> fileYN = tds.get(4).findElements(By.cssSelector("span"));
-                vo.setFileYn(false);
-                if(fileYN.size() != 0) {
-            		vo.setFileYn(true);
-                }
-                String docRegDt = tds.get(5).getText();
-                vo.setDocRegDt(docRegDt);
-                
-                
+                docSeq = tds.get(0).getText();
+                writer = tds.get(2).getText();
+                fileYn = CrawlingUtils.isFileCheck(tds.get(4).findElements(By.cssSelector("span")));
+                docRegDt = tds.get(5).getText();
                 WebElement a = aLinks.get(cursorIndex);
-                String title = a.getText();
-                vo.setTitle(title);
-                a.click();
-                waitingResponse(2500);
-
-                String detailPath = driver.getCurrentUrl();
-                vo.setDetailUrl(detailPath);
-
-                WebElement pArticle = driver.findElement(By.cssSelector("div.brd_viewer > div.vw_article"));
-                vo.setContents(pArticle.getAttribute("innerHTML"));
+                title = a.getText();
                 
-            	vo.setDocType(null);
+                a.click();
+                CrawlingUtils.waitingResponse(2500);
+
+                detailPath = driver.getCurrentUrl();
+                contents = driver.findElement(By.cssSelector("div.brd_viewer > div.vw_article")).getAttribute("innerHTML");
+                
+                vo = CrawlingUtils.setVOProperty(vo, docSeq, writer, title, fileYn, detailPath, docRegDt, contents, null, siteType, null);
             	
-            	if(checkDuplicateVo != null) {
-            		if(
-        				checkDuplicateVo.getTitle().equals(vo.getTitle())  
-        				&& checkDuplicateVo.getWriter().equals(vo.getWriter())
-        				&& checkDuplicateVo.getDocRegDt().substring(0,10).equals(vo.getDocRegDt())
-    				) {
-                		// 기존에 등록된 곳 까지 insert 시
-                		logger.info(site.getCode()+"/ALREADY REGISTER DOCUMENT");
-                		logger.info("TITLE::"+checkDuplicateVo.getTitle()+"/WRITER::"+checkDuplicateVo.getWriter()+"/CRETED_DOCUMENT:"+checkDuplicateVo.getDocRegDt());
-                		break;
-                	}
+            	if(CrawlingUtils.isDuplicateSavePoint(checkDuplicateVo, vo)) {
+            		break;
             	}
-            	
             	
             	vo.setSuccessYn("Y");
             	dao.insertCrawling(vo);
-            	
-            	if("1".equals(docSeq) ) {
-            		// 끝까지 insert 시도 
-            		logger.info(site.getCode()+"/END DOCUMENT");
-            		break;
-            	}
             	
             	retryCnt = 0;
             	cursorIndex++;
@@ -634,8 +530,7 @@ public class CrawlingServiceImpl implements CrawlingService{
             		retryCnt++;
             		continue;
             	}else if(retryCnt == RETRY_CNT) {
-            		vo.setSuccessYn("N");
-            		
+            		vo = CrawlingUtils.setVOProperty(vo, docSeq, writer, title, fileYn, detailPath, docRegDt, contents, null, siteType, null);
                 	dao.insertCrawling(vo);
                 	retryCnt++;
                     // 오류가 났을 시 다음 커서로 이동                
@@ -657,22 +552,7 @@ public class CrawlingServiceImpl implements CrawlingService{
         logger.info(site.getCode()+"/END WRITE DOCUMENT");
 		return true;
 	}
-
 	
-	public void waitingResponse(int seconds){
-        try {Thread.sleep(seconds);} catch (InterruptedException e) {}
-    }
-
-	// 페이지 이동시 로드시간을 기다리기 
-    public void pageMove(WebDriver driver, String url, int seconds){
-        driver.get(url);
-        waitingResponse(seconds);
-    }
-    
-	// 뒤로가기 시 로드시간을 기다리기 
-    public void pageBack(WebDriver driver, int seconds){
-        driver.navigate().back();
-        waitingResponse(seconds);
-    }
+	
     
 }

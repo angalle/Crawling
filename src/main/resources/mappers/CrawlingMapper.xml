@@ -47,8 +47,8 @@
 				file_yn,
 				contents,
 				detail_url,
-				site_url,
 				success_yn,
+				form_params,
 				reg_dt
 			)
 			VALUES
@@ -62,8 +62,8 @@
 				#{fileYn},
 				#{contents},
 				#{detailUrl},
-				#{siteUrl},
 				#{successYn},
+				#{formParams},
 				CURRENT_TIMESTAMP
 			);
          
