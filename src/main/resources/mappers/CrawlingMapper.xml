@@ -13,12 +13,14 @@
         <result property="siteType" column="site_type"/>
         <result property="docRegDt" column="doc_reg_dt"/>
         <result property="regDt" column="reg_dt"/>
+        <!-- <result property="docYear" column="doc_year"/> -->
     </resultMap>
 
  	<select id="checkDuplicateCrawling" resultMap="mappingCrawlingVo" resultType="CrawlingVO">
         select
         	doc_seq,
         	doc_type, 
+        	doc_year,
 			title,			 
 			writer, 
 			site_type, 
@@ -40,6 +42,7 @@
 			(
 				site_type,
 				doc_seq,
+				doc_year,
 				doc_type,
 				title,
 				writer,
@@ -55,6 +58,7 @@
 			(
 				#{siteType},
 				#{docSeq},
+				#{docYear},
 				#{docType},
 				#{title},
 				#{writer},

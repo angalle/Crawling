@@ -88,12 +88,16 @@ public class CrawlingServiceImpl implements CrawlingService{
                 CrawlingUtils.waitingResponse(2000);
 
                 detailPath = driver.getCurrentUrl();
-                String json = "{" +
-                    	"\"targetBoardSeq\": "+postBoardSeqParam+"," +
-                    "}";
+                String json = null;
+                if(postBoardSeqParam != null) {
+                	json = "{" +
+                        	"\"targetBoardSeq\": "+postBoardSeqParam+
+                        "}";
+                }
+                
                 contents = driver.findElement(By.cssSelector("textarea")).getAttribute("innerHTML");
                 
-                vo = CrawlingUtils.setVOProperty(vo, docSeq, writer, title, fileYn, detailPath, docRegDt, contents, board_type, siteType, json);
+                vo = CrawlingUtils.setVOProperty(vo, docSeq, writer, title, fileYn, detailPath, docRegDt, contents, board_type, siteType, json, null);
                 
                 if(CrawlingUtils.isDuplicateSavePoint(checkDuplicateVo, vo)) {
             		break;
@@ -116,8 +120,7 @@ public class CrawlingServiceImpl implements CrawlingService{
             		retryCnt++;
             		continue;
             	}else if(retryCnt == RETRY_CNT) {
-            		vo.setFileYn(false);
-                	vo.setSuccessYn("N");
+            		vo = CrawlingUtils.setVOProperty(vo, docSeq, writer, title, fileYn, detailPath, docRegDt, contents, board_type, siteType, null, null);
                 	dao.insertCrawling(vo);
                 	retryCnt++;
                 	// 오류가 났을 시 다음 커서로 이동                
@@ -197,7 +200,7 @@ public class CrawlingServiceImpl implements CrawlingService{
                 contents = driver.findElement(By.cssSelector("#bo_v_atc")).getAttribute("innerHTML");
                 fileYn = CrawlingUtils.isFileCheck(driver.findElements(By.cssSelector("#bo_v_file")));
                 
-                vo = CrawlingUtils.setVOProperty(vo, docSeq, writer, title, fileYn, detailPath, docRegDt, contents, board_type, siteType, null);
+                vo = CrawlingUtils.setVOProperty(vo, docSeq, writer, title, fileYn, detailPath, docRegDt, contents, board_type, siteType, null, null);
                 
                 if(CrawlingUtils.isDuplicateSavePoint(checkDuplicateVo, vo)) {
             		break;
@@ -216,7 +219,7 @@ public class CrawlingServiceImpl implements CrawlingService{
             		retryCnt++;
             		continue;
             	}else if(retryCnt == RETRY_CNT) {
-            		vo = CrawlingUtils.setVOProperty(vo, docSeq, writer, title, fileYn, detailPath, docRegDt, contents, board_type, siteType, null);
+            		vo = CrawlingUtils.setVOProperty(vo, docSeq, writer, title, fileYn, detailPath, docRegDt, contents, board_type, siteType, null, null);
                 	dao.insertCrawling(vo);
                 	retryCnt++;
                 	// 오류가 났을 시 다음 커서로 이동                
@@ -299,7 +302,7 @@ public class CrawlingServiceImpl implements CrawlingService{
                 detailPath = driver.getCurrentUrl();
                 contents = driver.findElement(By.cssSelector("#editContents")).getAttribute("innerHTML");
             	
-                vo = CrawlingUtils.setVOProperty(vo, docSeq, writer, title, fileYn, detailPath, docRegDt, contents, board_type, siteType, null);
+                vo = CrawlingUtils.setVOProperty(vo, docSeq, writer, title, fileYn, detailPath, docRegDt, contents, board_type, siteType, null, null);
                 
                 if(CrawlingUtils.isDuplicateSavePoint(checkDuplicateVo, vo)) {
             		break;
@@ -323,7 +326,7 @@ public class CrawlingServiceImpl implements CrawlingService{
             		retryCnt++;
             		continue;
             	}else if(retryCnt == RETRY_CNT) {
-            		vo = CrawlingUtils.setVOProperty(vo, docSeq, writer, title, fileYn, detailPath, docRegDt, contents, board_type, siteType, null);
+            		vo = CrawlingUtils.setVOProperty(vo, docSeq, writer, title, fileYn, detailPath, docRegDt, contents, board_type, siteType, null, null);
                 	dao.insertCrawling(vo);
                 	retryCnt++;
                 	// 오류가 났을 시 다음 커서로 이동                
@@ -353,7 +356,7 @@ public class CrawlingServiceImpl implements CrawlingService{
 		
 		ChromeOptions options = new ChromeOptions();
 		options.addArguments("headless");		
-		WebDriver driver = new ChromeDriver(options);	
+		WebDriver driver = new ChromeDriver(options);
 		
 		CrawlingVO checkDuplicateVo = dao.checkDuplicateCrawling(site.getCode());
 		
@@ -367,10 +370,19 @@ public class CrawlingServiceImpl implements CrawlingService{
         
         // 반복문의 flag, 1일때 종료 
         String docSeq = null;
-        CrawlingUtils.pageMove(driver, url, 2000);
-        List<WebElement> maxLinkSize = CrawlingUtils.getaLinkInTable(driver, ".de-news > table > tbody > tr.table-contents");
         
-        while((maxLinkSize.size()-1) >= cursorIndex){	
+        CrawlingUtils.pageMove(driver, url, 2000);
+        
+        List<WebElement> bugFixTarget = driver.findElements(By.cssSelector(".de-search-btn"));
+        bugFixTarget.get(1).click();
+        CrawlingUtils.waitingResponse(2000);
+        
+        WebElement startSelect = driver.findElement(By.cssSelector("select.de-search-select"));
+    	List<WebElement> startSelectOptions = startSelect.findElements(By.cssSelector("option"));
+    	WebElement startClickOption = startSelectOptions.get(pageIndex);
+    	String year = startClickOption.getText();
+    	
+        while(true){	
             CrawlingVO vo = new CrawlingVO();
             String siteType = site.getCode();
             String writer = null;
@@ -381,34 +393,50 @@ public class CrawlingServiceImpl implements CrawlingService{
             String contents = null;
             String board_type = null;
             
+            
             try{
-            	CrawlingUtils.pageMove(driver, url, 2000);
+            	
                 List<WebElement> aLinks = CrawlingUtils.getaLinkInTable(driver, ".de-news > table > tbody > tr.table-contents");
                 
                 logger.info(site.getCode()+"/CURRENT CURSOR/"+cursorIndex+"/MAX CURSOR/"+aLinks.size()+"/PAGE INDEX/"+pageIndex);
                 
-                if(aLinks.size() <= cursorIndex){
+                if((aLinks.size()-1) <= cursorIndex) {
+                	// 다음페이지로 
+                	year = CrawlingUtils.retryPageReload(driver, pageIndex);
+                	if(year.equals("false")) break;
+                	
+                	CrawlingUtils.waitingResponse(2000);
+                	
                 	pageIndex++;
-                	cursorIndex = 0; 
-                    continue;
+                	cursorIndex = 0;
+                	continue;
                 }
                 
                 List<WebElement> tds = driver.findElements(By.cssSelector(".de-news > table > tbody > tr.table-contents:nth-child("+(cursorIndex+1)+") > td"));
                 WebElement clickTarget = tds.get(1);
                 board_type = tds.get(0).getText();
                 title = clickTarget.getText();
+                String attr = clickTarget.getAttribute("onclick");
+                String json = null;
+                if(attr != null) {
+                	String bizSeq = clickTarget.getAttribute("onclick").split(",")[1];
+                    bizSeq = bizSeq.split(":")[1].replaceAll("'", "").replace("}", "");
+                    json = "{" +
+                    	"\"bizSeq\": "+bizSeq+"," +
+                    	"\"history\": {\"url\":[\"/biz/infoList\"]}" +
+                    "}";
+                }
                 
                 CrawlingUtils.executeAttributeJavascript(driver, null, clickTarget);
                 CrawlingUtils.waitingResponse(2000);
                 
                 detailPath = driver.getCurrentUrl();
-                String json = "{" +
-                	"\"bizSeq\": 878," +
-                	"\"history\": {\"url\":[\"/biz/infoList\"]}" +
-                "}";
+                
+                
+                
                 contents = driver.findElement(By.cssSelector("div.de-open-container > div.detail-contents")).getAttribute("innerHTML");
             	
-                vo = CrawlingUtils.setVOProperty(vo, docSeq, writer, title, fileYn, detailPath, docRegDt, contents, board_type, siteType, json);
+                vo = CrawlingUtils.setVOProperty(vo, docSeq, writer, title, fileYn, detailPath, docRegDt, contents, board_type, siteType, json, year);
                 
             	if(CrawlingUtils.isDuplicateSavePointByTwoType(checkDuplicateVo, vo)) {
             		break;
@@ -417,21 +445,33 @@ public class CrawlingServiceImpl implements CrawlingService{
             	vo.setSuccessYn("Y");
             	dao.insertCrawling(vo);
             	
+            	WebElement clickListBackTarget = driver.findElement(By.cssSelector("button.de-btn.blue"));
+            	clickListBackTarget.click();
+            	CrawlingUtils.waitingResponse(2000);
+            	
             	retryCnt = 0;
             	cursorIndex++;
             }catch(Exception e){
             	// retry 경남은  #### Cusor 3번 게시글이 에러가 남.
             	e.printStackTrace();
             	if(retryCnt < RETRY_CNT) {
+            		CrawlingUtils.pageMove(driver, url, 2000);
+            		year = CrawlingUtils.retryPageReload(driver, pageIndex);
+                	CrawlingUtils.waitingResponse(2000);
+            		
             		logger.warn(site.getCode()+"/CURRENT CURSOR/"+cursorIndex+"/PAGE INDEX/"+pageIndex+"/RETRY CNT/"+retryCnt);
             		retryCnt++;
             		continue;
             	}else if(retryCnt == RETRY_CNT) {
-            		vo = CrawlingUtils.setVOProperty(vo, docSeq, writer, title, fileYn, detailPath, docRegDt, contents, board_type, siteType, null);
+            		vo = CrawlingUtils.setVOProperty(vo, docSeq, writer, title, fileYn, detailPath, docRegDt, contents, board_type, siteType, null, year);
                 	dao.insertCrawling(vo);
                 	retryCnt++;
                 	// 오류가 났을 시 다음 커서로 이동                
                     cursorIndex++;
+                    
+                    CrawlingUtils.pageMove(driver, url, 2000);
+                	year = CrawlingUtils.retryPageReload(driver, pageIndex);
+                	CrawlingUtils.waitingResponse(2000);
                     continue;
             	}else {
             		//커서가 이동한뒤에도 반복적 오류가 발생하면 중단
@@ -511,7 +551,7 @@ public class CrawlingServiceImpl implements CrawlingService{
                 detailPath = driver.getCurrentUrl();
                 contents = driver.findElement(By.cssSelector("div.brd_viewer > div.vw_article")).getAttribute("innerHTML");
                 
-                vo = CrawlingUtils.setVOProperty(vo, docSeq, writer, title, fileYn, detailPath, docRegDt, contents, null, siteType, null);
+                vo = CrawlingUtils.setVOProperty(vo, docSeq, writer, title, fileYn, detailPath, docRegDt, contents, null, siteType, null, null);
             	
             	if(CrawlingUtils.isDuplicateSavePoint(checkDuplicateVo, vo)) {
             		break;
@@ -530,7 +570,7 @@ public class CrawlingServiceImpl implements CrawlingService{
             		retryCnt++;
             		continue;
             	}else if(retryCnt == RETRY_CNT) {
-            		vo = CrawlingUtils.setVOProperty(vo, docSeq, writer, title, fileYn, detailPath, docRegDt, contents, null, siteType, null);
+            		vo = CrawlingUtils.setVOProperty(vo, docSeq, writer, title, fileYn, detailPath, docRegDt, contents, null, siteType, null, null);
                 	dao.insertCrawling(vo);
                 	retryCnt++;
                     // 오류가 났을 시 다음 커서로 이동                

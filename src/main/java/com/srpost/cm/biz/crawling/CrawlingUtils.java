@@ -16,7 +16,7 @@ public class CrawlingUtils {
 	
 	private static final Logger logger = LoggerFactory.getLogger(CrawlingServiceImpl.class);
 	
-	public static CrawlingVO setVOProperty(CrawlingVO vo, String docSeq, String writer, String title, boolean fileYn, String detilaPath, String docRegDt, String contents, String docType, String siteType, String formParams) {
+	public static CrawlingVO setVOProperty(CrawlingVO vo, String docSeq, String writer, String title, boolean fileYn, String detilaPath, String docRegDt, String contents, String docType, String siteType, String formParams, String year) {
 		if(docSeq != null) {
 			vo.setDocSeq(Integer.parseInt(docSeq));
 		}		
@@ -29,7 +29,22 @@ public class CrawlingUtils {
 		vo.setDocType(docType);
 		vo.setSiteType(siteType);
 		vo.setFormParams(formParams);
+		vo.setDocYear(year);
 		return vo;
+	}
+	
+	public static String retryPageReload(WebDriver driver, int pageIndex) {
+		WebElement select = driver.findElement(By.cssSelector("select.de-search-select"));
+    	List<WebElement> selectOptions = select.findElements(By.cssSelector("option"));
+    	if((selectOptions.size()-1) < pageIndex) {
+    		return "false";
+    	}
+    	
+    	WebElement clickOption = selectOptions.get(pageIndex);
+    	String year = clickOption.getText();
+    	clickOption.click();
+    	
+    	return year;
 	}
 	
 	
@@ -54,8 +69,9 @@ public class CrawlingUtils {
 	public static boolean isDuplicateSavePointByTwoType(CrawlingVO checkDuplicateVo, CrawlingVO vo) {
 		if(checkDuplicateVo != null) {
     		if(
-    				checkDuplicateVo.getTitle().equals(vo.getTitle())  
-    				&& checkDuplicateVo.getDocType().equals(vo.getDocType())
+    				checkDuplicateVo.getDocYear().equals(vo.getDocYear()) &&
+    				checkDuplicateVo.getTitle().equals(vo.getTitle()) && 
+    				checkDuplicateVo.getDocType().equals(vo.getDocType())
 			) {
         		// 기존에 등록된 곳 까지 insert 시
     			logger.info(vo.getSiteType()+"/ALREADY REGISTER DOCUMENT");
@@ -101,6 +117,11 @@ public class CrawlingUtils {
 
 	// 페이지 이동시 로드시간을 기다리기 
     public static void pageMove(WebDriver driver, String url, int seconds){
+        driver.get(url);
+        waitingResponse(seconds);
+    }
+    
+    public static void pagePostRequestMove(WebDriver driver, String url, int seconds){
         driver.get(url);
         waitingResponse(seconds);
     }

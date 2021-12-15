@@ -4,6 +4,7 @@ public class CrawlingVO {
 
 	private String crawlingSeq;
 	private int docSeq;
+	private String docYear;
 	private String siteType;
 	private String docType;
 	private String title;
@@ -16,6 +17,13 @@ public class CrawlingVO {
 	private String successYn = "N";
 	private String regDt;
 	
+	public String getDocYear() {
+		return docYear;
+	}
+
+	public void setDocYear(String docYear) {
+		this.docYear = docYear;
+	}
 
 	public String getCrawlingSeq() {
 		return crawlingSeq;
