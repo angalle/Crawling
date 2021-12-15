@@ -9,7 +9,7 @@ CREATE TABLE si_crawling (
    file_yn char(1) DEFAULT false NOT NULL COMMENT '첨부파일 유무 Y:있음 N:없음`', #isFile
    contents LONGTEXT NULL COMMENT '본문',										#documents
    detail_url varchar(250) NULL COMMENT '상세보기 url',						#detail_url
-   form_params varchar(250) NULL COMMENT 'post params',						
+   form_params varchar(250) NULL COMMENT '원본사이트 상세보기 링크용 파라미터',						
    success_yn char(1) NULL COMMENT '취득성공여부 Y:성공 N:실패',					#status
    reg_dt DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL COMMENT '등록일',		#created
    CONSTRAINT pk_si_crawling PRIMARY KEY (crawling_seq)
