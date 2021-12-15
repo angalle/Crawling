@@ -13,7 +13,7 @@
         <result property="siteType" column="site_type"/>
         <result property="docRegDt" column="doc_reg_dt"/>
         <result property="regDt" column="reg_dt"/>
-        <!-- <result property="docYear" column="doc_year"/> -->
+        <result property="docYear" column="doc_year"/>
     </resultMap>
 
  	<select id="checkDuplicateCrawling" resultMap="mappingCrawlingVo" resultType="CrawlingVO">
@@ -29,7 +29,7 @@
 		from si_crawling ci 
 		where site_type = #{siteType}
 		and success_yn = 'Y'
-		order by reg_dt 
+		order by doc_year desc, doc_seq desc
 		LIMIT 1 
     </select>
 

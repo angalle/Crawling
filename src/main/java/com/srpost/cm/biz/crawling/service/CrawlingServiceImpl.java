@@ -379,7 +379,7 @@ public class CrawlingServiceImpl implements CrawlingService{
         
         WebElement startSelect = driver.findElement(By.cssSelector("select.de-search-select"));
     	List<WebElement> startSelectOptions = startSelect.findElements(By.cssSelector("option"));
-    	WebElement startClickOption = startSelectOptions.get(pageIndex);
+    	WebElement startClickOption = startSelectOptions.get(0);
     	String year = startClickOption.getText();
     	
         while(true){	
@@ -397,10 +397,10 @@ public class CrawlingServiceImpl implements CrawlingService{
             try{
             	
                 List<WebElement> aLinks = CrawlingUtils.getaLinkInTable(driver, ".de-news > table > tbody > tr.table-contents");
-                
+                docSeq = Integer.toString(aLinks.size() - cursorIndex);
                 logger.info(site.getCode()+"/CURRENT CURSOR/"+cursorIndex+"/MAX CURSOR/"+aLinks.size()+"/PAGE INDEX/"+pageIndex);
                 
-                if((aLinks.size()-1) <= cursorIndex) {
+                if((aLinks.size()) <= cursorIndex) {
                 	// 다음페이지로 
                 	year = CrawlingUtils.retryPageReload(driver, pageIndex);
                 	if(year.equals("false")) break;
