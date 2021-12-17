@@ -132,12 +132,13 @@ public class CrawlingServiceImpl implements CrawlingService{
             		logger.error(site.getCode()+"/CURRENT CURSOR/"+cursorIndex+"/PAGE INDEX/"+pageIndex+"/RETRY CNT/"+retryCnt);
             		logger.error(site.getCode()+"/SITE URL/"+site.getValue());
             		logger.error("ABOVE THIS LINE, ERROR OCCURING AND PLEASE READ LOGS");
+            		driver.quit();
             		break;
             	}
             	
             }            
         }
-        
+        driver.quit();
         logger.info(site.getCode()+"/END WRITE DOCUMENT");
 		return true;
 	}
@@ -231,12 +232,13 @@ public class CrawlingServiceImpl implements CrawlingService{
             		logger.error(site.getCode()+"/CURRENT CURSOR/"+cursorIndex+"/PAGE INDEX/"+pageIndex+"/RETRY CNT/"+retryCnt);
             		logger.error(site.getCode()+"/SITE URL/"+site.getValue());
             		logger.error("ABOVE THIS LINE, ERROR OCCURING AND PLEASE READ LOGS");
+            		driver.quit();
             		break;
             	}
             	
             }            
         }
-        
+        driver.quit();
         logger.info(site.getCode()+"/END WRITE DOCUMENT");
 		return true;
 	}
@@ -338,13 +340,14 @@ public class CrawlingServiceImpl implements CrawlingService{
             		logger.error(site.getCode()+"/CURRENT CURSOR/"+cursorIndex+"/PAGE INDEX/"+pageIndex+"/RETRY CNT/"+retryCnt);
             		logger.error(site.getCode()+"/SITE URL/"+site.getValue());
             		logger.error("ABOVE THIS LINE, ERROR OCCURING AND PLEASE READ LOGS");
+            		driver.quit();
             		break;
             	}            	
             	
                 
             }            
         }
-        
+        driver.quit();
         logger.info(site.getCode()+"/END WRITE DOCUMENT");
 		return true;
 	}
@@ -479,13 +482,14 @@ public class CrawlingServiceImpl implements CrawlingService{
             		logger.error(site.getCode()+"/CURRENT CURSOR/"+cursorIndex+"/PAGE INDEX/"+pageIndex+"/RETRY CNT/"+retryCnt);
             		logger.error(site.getCode()+"/SITE URL/"+site.getValue());
             		logger.error("ABOVE THIS LINE, ERROR OCCURING AND PLEASE READ LOGS");
+            		driver.quit();
             		break;
             	}       
             	
                 
             }            
         }
-        
+        driver.quit();
         logger.info(site.getCode()+"/END WRITE DOCUMENT");
 		return true;
 	}
@@ -582,13 +586,14 @@ public class CrawlingServiceImpl implements CrawlingService{
             		logger.error(site.getCode()+"/CURRENT CURSOR/"+cursorIndex+"/PAGE INDEX/"+pageIndex+"/RETRY CNT/"+retryCnt);
             		logger.error(site.getCode()+"/SITE URL/"+site.getValue());
             		logger.error("ABOVE THIS LINE, ERROR OCCURING AND PLEASE READ LOGS");
+            		driver.quit();
             		break;
             	}              	
             	
 
             }            
         }
-        
+        driver.quit();
         logger.info(site.getCode()+"/END WRITE DOCUMENT");
 		return true;
 	}
