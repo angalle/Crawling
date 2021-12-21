@@ -62,11 +62,11 @@ public class CrawlingVO {
 	}
 
 	public void setDocRegDt(String docRegDt) {
+		this.docRegDt = null;
 		if(docRegDt != null) {
 			docRegDt = docRegDt.replace(".", "-");
 			this.docRegDt = docRegDt;
-		}		
-		this.docRegDt = null;
+		}				
 	}
 
 	public Boolean getFileYn() {
