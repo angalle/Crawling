@@ -35,25 +35,25 @@ public class HomeController {
 		logger.info("home");
 		setSystemProperties();
 		
-//		if(!service.executeGN01(Site.GN001)) {
-//			return "Fail01";	
-//		}
+		if(!service.executeGN01(Site.GN001)) {
+			return "Fail01";	
+		}
 		
 		if(!service.executeGN02(Site.GN002)) {
 			return "Fail02";
 		}
 		
-//		if(!service.executeGN03(Site.GN003)) {
-//			return "Fail03";
-//		}
+		if(!service.executeGN03(Site.GN003)) {
+			return "Fail03";
+		}
 		
-//		if(!service.executeGN04(Site.GN004)) {
-//			return "Fail04";
-//		}
+		if(!service.executeGN04(Site.GN004)) {
+			return "Fail04";
+		}
 		
-//		if(!service.executeGN05(Site.GN005)) {
-//			return "Fail05";
-//		}
+		if(!service.executeGN05(Site.GN005)) {
+			return "Fail05";
+		}
 		
 		return "Success";
 		

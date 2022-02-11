@@ -1,13 +1,25 @@
 package com.srpost.cm.biz.crawling;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.List;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.StatusLine;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.HttpClientBuilder;
 import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpRequest;
 
 import com.srpost.cm.biz.crawling.service.CrawlingServiceImpl;
 import com.srpost.cm.biz.crawling.vo.CrawlingVO;
@@ -114,10 +126,51 @@ public class CrawlingUtils {
 	public static void waitingResponse(int seconds){
         try {Thread.sleep(seconds);} catch (InterruptedException e) {}
     }
+	
+	public static boolean isRetryHttpGetRequest(String urlString) throws IOException{
+		int statusCode = 0;
+		int retryCnt = 0;
+		while(statusCode != 200) {
+			URL url = new URL(urlString);
+	        HttpURLConnection connection = (HttpURLConnection)url.openConnection();
+	        connection.setRequestMethod("GET");
+	        connection.connect();
+		    logger.info("GET REQUEST::"+urlString);
+	        statusCode = connection.getResponseCode();
+	        if(retryCnt == 3) {
+	        	return false;
+	        }
+	        retryCnt++;
+		}
+		return true;
+	}
+	
+	public static boolean retryHttpPostRequest(String urlString, String jsonString) throws IOException{
+		int statusCode = 0;
+		int retryCnt = 0;
+		HttpClient httpClient = HttpClientBuilder.create().build();
+		while(statusCode != 200) {
+			HttpPost request = new HttpPost(urlString);
+		    StringEntity params =new StringEntity(jsonString);
+		    request.addHeader("content-type", "application/x-www-form-urlencoded");
+		    request.setEntity(params);
+		    HttpResponse response = httpClient.execute(request);
+		    
+		    StatusLine statusLine = response.getStatusLine();
+		    statusCode = statusLine.getStatusCode();
+		    logger.info("POST REQUEST::"+urlString+"/POSTBODY ::"+jsonString);
+	        if(retryCnt == 3) {
+	        	logger.warn("PAGE STATUS ERROR URL::"+urlString);
+	        	return false;
+	        }
+	        retryCnt++;
+		}
+		return true;
+	}
 
 	// 페이지 이동시 로드시간을 기다리기 
-    public static void pageMove(WebDriver driver, String url, int seconds){
-        driver.get(url);
+    public static void pageMove(WebDriver driver, String urlString, int seconds){
+        driver.get(urlString);
         waitingResponse(seconds);
     }
     

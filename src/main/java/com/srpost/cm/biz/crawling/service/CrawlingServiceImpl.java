@@ -95,6 +95,12 @@ public class CrawlingServiceImpl implements CrawlingService{
                         "}";
                 }
                 
+                if(!CrawlingUtils.retryHttpPostRequest(site.getDetail(), json)) {
+                	logger.info(site.getCode()+"/CURRENT CURSOR/"+cursorIndex+"/PAGE INDEX/"+pageIndex+"/SITE/"+detailPath);
+                	cursorIndex++;
+                	continue;
+                }
+                
                 contents = driver.findElement(By.cssSelector("textarea")).getAttribute("innerHTML");
                 
                 vo = CrawlingUtils.setVOProperty(vo, docSeq, writer, title, fileYn, detailPath, docRegDt, contents, board_type, siteType, json, null);
@@ -198,6 +204,11 @@ public class CrawlingServiceImpl implements CrawlingService{
                 CrawlingUtils.waitingResponse(2500);
                 
                 detailPath = driver.getCurrentUrl();
+                if(!CrawlingUtils.isRetryHttpGetRequest(detailPath)) {
+                	logger.info(site.getCode()+"/CURRENT CURSOR/"+cursorIndex+"/PAGE INDEX/"+pageIndex+"/SITE/"+detailPath);
+                	cursorIndex++;
+                	continue;
+                }
                 contents = driver.findElement(By.cssSelector("#bo_v_atc")).getAttribute("innerHTML");
                 fileYn = CrawlingUtils.isFileCheck(driver.findElements(By.cssSelector("#bo_v_file")));
                 
@@ -302,6 +313,11 @@ public class CrawlingServiceImpl implements CrawlingService{
                 CrawlingUtils.waitingResponse(2000);
                 
                 detailPath = driver.getCurrentUrl();
+                if(!CrawlingUtils.isRetryHttpGetRequest(detailPath)) {
+                	logger.info(site.getCode()+"/CURRENT CURSOR/"+cursorIndex+"/PAGE INDEX/"+pageIndex+"/SITE/"+detailPath);
+                	cursorIndex++;
+                	continue;
+                }
                 contents = driver.findElement(By.cssSelector("#editContents")).getAttribute("innerHTML");
             	
                 vo = CrawlingUtils.setVOProperty(vo, docSeq, writer, title, fileYn, detailPath, docRegDt, contents, board_type, siteType, null, null);
@@ -430,6 +446,12 @@ public class CrawlingServiceImpl implements CrawlingService{
                     "}";
                 }
                 
+                if(!CrawlingUtils.retryHttpPostRequest(site.getDetail(), json)) {
+                	logger.info(site.getCode()+"/CURRENT CURSOR/"+cursorIndex+"/PAGE INDEX/"+pageIndex+"/SITE/"+detailPath);
+                	cursorIndex++;
+                	continue;
+                }
+                
                 CrawlingUtils.executeAttributeJavascript(driver, null, clickTarget);
                 CrawlingUtils.waitingResponse(2000);
                 
@@ -553,6 +575,11 @@ public class CrawlingServiceImpl implements CrawlingService{
                 CrawlingUtils.waitingResponse(2500);
 
                 detailPath = driver.getCurrentUrl();
+                if(!CrawlingUtils.isRetryHttpGetRequest(detailPath)) {
+                	logger.info(site.getCode()+"/CURRENT CURSOR/"+cursorIndex+"/PAGE INDEX/"+pageIndex+"/SITE/"+detailPath);
+                	cursorIndex++;
+                	continue;
+                }
                 contents = driver.findElement(By.cssSelector("div.brd_viewer > div.vw_article")).getAttribute("innerHTML");
                 
                 vo = CrawlingUtils.setVOProperty(vo, docSeq, writer, title, fileYn, detailPath, docRegDt, contents, null, siteType, null, null);
